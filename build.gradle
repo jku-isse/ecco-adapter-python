@@ -1,3 +1,9 @@
+plugins {
+    id 'groovy'
+    id 'idea' // optional (to generate IntelliJ IDEA project files)
+}
+
+
 //plugins {
 //    id 'org.openjfx.javafxplugin' version '0.0.10'
 //}
@@ -26,6 +32,17 @@ sourceSets {
             java {
                 exclude '**/py4j/**'
             }
+        } else {
+            if (!use_py4j_ast_parser.toBoolean()){
+                java {
+                    exclude '**/py4j/ast/**'
+                }
+            }
+            if (!use_py4j_cst_parser.toBoolean()){
+                java {
+                    exclude '**/py4j/cst/**'
+                }
+            }
         }
         if (!use_graalvm_parser.toBoolean()) {
             java {
@@ -35,6 +52,9 @@ sourceSets {
                 exclude 'graalVM-config.properties'
             }
         }
+
+
+
 //        if (!use_lilypond.toBoolean()) {
 //            resources {
 //                exclude 'lilypond-config.properties'
@@ -52,6 +72,19 @@ dependencies {
     if (use_graalvm_parser.toBoolean()) {
         println 'include graalvm dependency'
         implementation group: 'org.graalvm.sdk', name: 'polyglot-tck', version: '21.3.0'
+    }
+
+
+//    implementation(localGroovy())
+    testImplementation(platform('org.junit:junit-bom:5.9.1'))
+    testImplementation('org.junit.jupiter:junit-jupiter')
+}
+
+test {
+    useJUnitPlatform()
+    include '**java.at.jku.isse.ecco.adapter.python/*'
+    testLogging {
+        events "passed", "skipped", "failed"
     }
 }
 
