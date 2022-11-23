@@ -11,6 +11,7 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Stream;
 
 public class AdapterTest {
 
@@ -24,7 +25,25 @@ public class AdapterTest {
 
         deleteDir(writePath);
 
-        List<Path> files = Arrays.stream(readFolder.listFiles()).filter(f -> !f.isDirectory()).map(f -> Paths.get(f.getAbsolutePath())).toList();
+        List<Path> files;
+        try (Stream<Path> s1 = Files.walk(readPath);
+             Stream<Path> s2 = Files.walk(readPath)) {
+
+            s1.filter(Files::isDirectory).map(in -> writePath.resolve(readPath.relativize(in)))
+                    .forEach(out -> {
+                                try {
+                                    Files.createDirectories(out);
+                                } catch (IOException e) {
+                                    throw new RuntimeException(e);
+                                }
+                            }
+                    );
+
+            files = s2.filter(f -> !Files.isDirectory(f)).filter(f -> f.getFileName().toString().endsWith(".py")).toList();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+
         Path[] inputFiles = files.toArray(new Path[files.size()]);
 
         System.out.println("reading ...");
