@@ -7,9 +7,7 @@ plugins {
 //plugins {
 //    id 'org.openjfx.javafxplugin' version '0.0.10'
 //}
-//
-//ecco.adapter = true
-//
+
 //javafx {
 //    version = "16"
 //    modules = [ 'javafx.controls' ]
@@ -36,17 +34,6 @@ sourceSets {
             java {
                 exclude '**/py4j/**'
             }
-        } else {
-            if (!use_py4j_ast_parser.toBoolean()){
-                java {
-                    exclude '**/py4j/ast/**'
-                }
-            }
-            if (!use_py4j_cst_parser.toBoolean()){
-                java {
-                    exclude '**/py4j/cst/**'
-                }
-            }
         }
         if (!use_graalvm_parser.toBoolean()) {
             java {
@@ -56,14 +43,6 @@ sourceSets {
                 exclude 'graalVM-config.properties'
             }
         }
-
-
-
-//        if (!use_lilypond.toBoolean()) {
-//            resources {
-//                exclude 'lilypond-config.properties'
-//            }
-//        }
     }
 }
 
