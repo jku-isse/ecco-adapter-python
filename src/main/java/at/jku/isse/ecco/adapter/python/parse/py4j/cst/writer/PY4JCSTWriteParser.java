@@ -41,8 +41,7 @@ public class PY4JCSTWriteParser extends PY4JParser implements PythonParser.Write
             }
 
             if (exitCode == 0) {
-                LOGGER.log(Level.INFO, "Parce exited normal, code: {0}, {1}ms", new Object[]{exitCode, (System.nanoTime() - tm) / 1000000});
-                LOGGER.log(Level.INFO, "Successfully created file {0}", path);
+                LOGGER.log(Level.INFO, "Parsing (write) successful (exit-code: {0}); wrote 1 file in {1}ms", new Object[]{exitCode, (System.nanoTime() - tm) / 1000000});
             } else {
                 LOGGER.severe("Parce exited with code " + exitCode + ":\n" + getStackTrace(process));
             }

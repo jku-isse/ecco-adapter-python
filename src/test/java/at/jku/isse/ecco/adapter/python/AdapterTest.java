@@ -2,20 +2,25 @@ package at.jku.isse.ecco.adapter.python;
 
 import at.jku.isse.ecco.storage.mem.dao.MemEntityFactory;
 import at.jku.isse.ecco.tree.Node;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileReader;
 import java.io.IOException;
 import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Stream;
 
 public class AdapterTest {
 
     public static void main(String[] args) {
+
+        final String python = ".py";
+        final String jupyter = "ipynb";
 
         File readFolder = new File("adapter/python/src/test/resources/read/");
         File writeFolder = new File("adapter/python/src/test/resources/write/");
@@ -39,7 +44,7 @@ public class AdapterTest {
                             }
                     );
 
-            files = s2.filter(f -> !Files.isDirectory(f)).filter(f -> f.getFileName().toString().endsWith(".py")).toList();
+            files = s2.filter(f -> !Files.isDirectory(f)).filter(f -> f.getFileName().toString().endsWith(python) || f.getFileName().toString().endsWith(jupyter)).toList();
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -49,10 +54,9 @@ public class AdapterTest {
         System.out.println("reading ...");
         PythonReader reader = new PythonReader(new MemEntityFactory());
         Set<Node.Op> readNodes = reader.read(Paths.get(readFolder.getAbsolutePath()), inputFiles);
-        System.out.println(readNodes.size());
         System.out.println("reading ... successful");
 
-        System.out.print("writing ...");
+        System.out.println("writing ...");
         PythonWriter writer = new PythonWriter();
         Set<Node> writeNodes = new HashSet<>(readNodes);
         writer.write(Paths.get(writeFolder.getAbsolutePath()), writeNodes);
@@ -66,9 +70,18 @@ public class AdapterTest {
             Path outputPath = readPath.relativize(inputPath);
             outputPath = writePath.resolve(outputPath);
 
-            if (!compareFileArrays(inputPath, outputPath)) {
-                System.out.println("Writing of " + outputPath + " NOT identical");
-                allIdentical = false;
+            if (inputPath.toString().endsWith(python)) {
+                if (!comparePythonFiles(inputPath, outputPath)) {
+                    System.out.println("Writing of " + outputPath + " NOT identical");
+                    allIdentical = false;
+                }
+            } else if (inputPath.toString().endsWith(jupyter)) {
+                if (!compareJupyterFiles(inputPath, outputPath)) {
+                    System.out.println("Writing of " + outputPath + " NOT identical");
+                    allIdentical = false;
+                }
+            } else {
+                System.out.println("Unknown File extension");
             }
         }
         if (allIdentical) {
@@ -76,19 +89,66 @@ public class AdapterTest {
         }
     }
 
-    private static boolean compareFileArrays(Path File_One, Path File_Two) {
+    private static boolean comparePythonFiles(Path p1, Path p2) {
         try {
-            if (Files.size(File_One) != Files.size(File_Two)) {
-                return false;
-            }
+            BufferedReader reader1 = new BufferedReader(new FileReader(p1.toFile()));
+            BufferedReader reader2 = new BufferedReader(new FileReader(p2.toFile()));
 
-            byte[] First_File = Files.readAllBytes(File_One);
-            byte[] Second_File = Files.readAllBytes(File_Two);
-            return Arrays.equals(First_File, Second_File);
+            String pattern = "\s*";
+
+            String line1 = reader1.readLine();
+            String line2 = reader2.readLine();
+            while (line1 != null || line2 != null) {
+                if (line1 == null || line2 == null) {
+                    return false;
+                } else if (line1.matches(pattern) || line2.matches(pattern)) {
+                    // continue - empty lines are normalized
+                } else if (!line1.equalsIgnoreCase(line2)) {
+                    return false;
+                }
+
+                line1 = reader1.readLine();
+                line2 = reader2.readLine();
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return true;
+    }
+
+    private static boolean compareJupyterFiles(Path p1, Path p2) {
+        try {
+            ObjectMapper mapper = new ObjectMapper();
+
+            JsonNode actualObj1 = mapper.readTree(new String(Files.readAllBytes(p1)));
+            JsonNode actualObj2 = mapper.readTree(new String(Files.readAllBytes(p2)));
+
+            JupyterComparator cmp = new JupyterComparator();
+            return actualObj1.equals(cmp, actualObj2);
         } catch (IOException e) {
             e.printStackTrace();
         }
         return false;
+    }
+
+    private static class JupyterComparator implements Comparator<JsonNode> {
+        private static final List<String> ignoreFields = Arrays.asList("outputs", "metadata", "execution_count");
+
+        @Override
+        public int compare(JsonNode j1, JsonNode j2) {
+            System.out.println("comparing Nodes");
+            if ((j1 instanceof ObjectNode o1) && (j2 instanceof ObjectNode o2)) {
+                o1.remove(ignoreFields);
+                o2.remove(ignoreFields);
+
+                if (o1.equals(o2)) {
+                    return 0;
+                }
+            } else if (j1.equals(j2)) {
+                return 0;
+            }
+            return 1;
+        }
     }
 
     /**

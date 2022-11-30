@@ -1,6 +1,10 @@
 package at.jku.isse.ecco.adapter.python.parse.py4j.ast.reader;
 
 import at.jku.isse.ecco.adapter.python.data.*;
+import at.jku.isse.ecco.adapter.python.data.ast.ClassArtifactData;
+import at.jku.isse.ecco.adapter.python.data.ast.DumpArtifactData;
+import at.jku.isse.ecco.adapter.python.data.ast.IntArtifactData;
+import at.jku.isse.ecco.adapter.python.data.ast.StringArtifactData;
 import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.dao.EntityFactory;
 import at.jku.isse.ecco.tree.Node;

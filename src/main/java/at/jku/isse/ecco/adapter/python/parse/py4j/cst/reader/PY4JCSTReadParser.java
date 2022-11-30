@@ -41,11 +41,8 @@ public class PY4JCSTReadParser extends PY4JParser implements PythonParser.Reader
                 LOGGER.severe("parsing process timed out after " + MAX_SCRIPT_TIMEOUT_SECONDS + " seconds");
             }
 
-
             if (exitCode == 0) {
-                LOGGER.log(Level.INFO, "Parce exited normal, code: {0}, {1}ms", new Object[]{exitCode, (System.nanoTime() - tm) / 1000000});
-                LOGGER.log(Level.INFO, "created {0} nodes", readerGateway.getNodesCount());
-
+                LOGGER.log(Level.INFO, "Parsing (read) successful (exit-code: {0}); created {1} nodes in {1}ms", new Object[]{exitCode, readerGateway.getNodesCount(), (System.nanoTime() - tm) / 1000000});
                 return readerGateway.getRoot();
 
             } else {

@@ -1,4 +1,4 @@
-package at.jku.isse.ecco.adapter.python.data;
+package at.jku.isse.ecco.adapter.python.data.ast;
 
 import at.jku.isse.ecco.artifact.ArtifactData;
 
