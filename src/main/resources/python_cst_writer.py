@@ -11,7 +11,7 @@ ep = None  # py4j gateway entry point
 
 
 def parse(java_node: object) -> CSTNode:
-    artifactBytes = ep.getTypeArtifactBytes(java_node)
+    artifactBytes = java_node.getTypeArtifactBytes()
     cst_current_node = pickle.loads(artifactBytes)
 
     # print(type(cst_current_node))
@@ -21,11 +21,11 @@ def parse(java_node: object) -> CSTNode:
     java_field_nodes = java_node.getChildren()
     for fieldIdx in range(len(java_field_nodes)):
         java_field_node = java_field_nodes[fieldIdx]
-        cst_attribute_name = ep.getFieldArtifactName(java_field_node)
+        cst_attribute_name = java_field_node.getFieldArtifactName()
         # print(cst_attribute_name)
 
-        if ep.getParentFieldName(java_field_node) is not None:
-            cst_node_to_add_field = getattr(cst_current_node, ep.getParentFieldName(java_field_node))
+        if java_field_node.getParentFieldName() is not None:
+            cst_node_to_add_field = getattr(cst_current_node, java_field_node.getParentFieldName())
         else:
             cst_node_to_add_field = cst_current_node
 
@@ -55,8 +55,8 @@ def parse(java_node: object) -> CSTNode:
             if pars is not None:
                 cst_node_to_add_field = cst_node_to_add_field.with_changes(**pars)
 
-        if ep.getParentFieldName(java_field_node) is not None:
-            pars = {ep.getParentFieldName(java_field_node): cst_node_to_add_field}
+        if java_field_node.getParentFieldName() is not None:
+            pars = {java_field_node.getParentFieldName(): cst_node_to_add_field}
             cst_current_node = cst_current_node.with_changes(**pars)
         else:
             cst_current_node = cst_node_to_add_field
@@ -73,8 +73,8 @@ def write(fileName: str):
 
     # parse code from Java Artifact Tree
     root = ep.getRoot()
-    if ep.isType(root):
-        code = parse(ep.getRoot()).code
+    if root.isType():
+        code = parse(root).code
     else:
 
         json_dict = {
@@ -88,12 +88,12 @@ def write(fileName: str):
         for cellsIdx in range(len(cellNodes)):
             java_cell_node = cellNodes[cellsIdx]
 
-            if ep.getCellType(java_cell_node) == "markdown":
+            if java_cell_node.getCellType() == "markdown":
                 lines = java_cell_node.getChildren()
                 source = []
                 for lineIdx in range(len(lines)):
                     line_node = lines[lineIdx]
-                    source.append(ep.getLine(line_node))
+                    source.append(line_node.getLine())
 
                 json_dict["cells"].append({
                     "cell_type": "markdown",
@@ -103,14 +103,14 @@ def write(fileName: str):
                     }
                 })
 
-            elif ep.getCellType(java_cell_node) == "code":
-                if ep.getParseType(java_cell_node) == "markdown":
+            elif java_cell_node.getCellType() == "code":
+                if java_cell_node.getParseType() == "markdown":
 
                     lines = java_cell_node.getChildren()
                     source = []
                     for lineIdx in range(len(lines)):
                         line_node = lines[lineIdx]
-                        source.append(ep.getLine(line_node))
+                        source.append(line_node.getLine())
 
                     json_dict["cells"].append({
                         "cell_type": "code",
@@ -121,7 +121,7 @@ def write(fileName: str):
                             "collapsed": False
                         }
                     })
-                elif ep.getParseType(java_cell_node) == "code":
+                elif java_cell_node.getParseType() == "code":
                     if len(java_cell_node.getChildren()) != 1:
                         print("Expected 1 module node, found :" + str(len(java_cell_node.getChildren())))
                     else:
@@ -137,9 +137,9 @@ def write(fileName: str):
                             }
                         })
                 else:
-                    print("Unknown parse type:" + str(ep.getParseType(java_cell_node)))
+                    print("Unknown parse type:" + str(java_cell_node.getParseType()))
             else:
-                print("Unknown cell type:" + str(ep.getCellType(java_cell_node)))
+                print("Unknown cell type:" + str(java_cell_node.getCellType()))
 
         code = json.dumps(json_dict)
 

@@ -15,7 +15,7 @@ dumpNodes = (EmptyLine, BaseExpression)
 
 # no visiting, no dumping, saved with parent dump
 # these nodes need to be kept with their parent as identifier (i.e. Nam
-skipNodes = (ImportAlias, AssignTarget, ImportFrom, WithItem, MaybeSentinel, ExceptHandler, Finally)
+skipNodes = (ImportAlias, AssignTarget, ImportFrom, WithItem, MaybeSentinel, ExceptHandler, ExceptStarHandler, Finally)
 
 
 def visit_required(node, attribute):
