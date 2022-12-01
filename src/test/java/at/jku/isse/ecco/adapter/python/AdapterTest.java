@@ -6,10 +6,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileReader;
-import java.io.IOException;
+import java.io.*;
 import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.*;
@@ -101,7 +98,7 @@ public class AdapterTest {
             while (line1 != null || line2 != null) {
                 if (line1 == null || line2 == null) {
                     return false;
-                } else if (line1.matches(pattern) || line2.matches(pattern)) {
+                } else if (line1.matches(pattern) && line2.matches(pattern)) {
                     // continue - empty lines are normalized
                 } else if (!line1.equalsIgnoreCase(line2)) {
                     return false;
@@ -110,8 +107,12 @@ public class AdapterTest {
                 line1 = reader1.readLine();
                 line2 = reader2.readLine();
             }
+        } catch (FileNotFoundException e) {
+            System.out.print("File not found while checking " + p2.getFileName() + " ...");
+            return false;
         } catch (IOException e) {
             e.printStackTrace();
+            return false;
         }
         return true;
     }
@@ -125,6 +126,8 @@ public class AdapterTest {
 
             JupyterComparator cmp = new JupyterComparator();
             return actualObj1.equals(cmp, actualObj2);
+        } catch (NoSuchFileException e) {
+            System.out.print("File not found while checking " + p2.getFileName() + " ...");
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -136,8 +139,9 @@ public class AdapterTest {
 
         @Override
         public int compare(JsonNode j1, JsonNode j2) {
-            System.out.println("comparing Nodes");
+
             if ((j1 instanceof ObjectNode o1) && (j2 instanceof ObjectNode o2)) {
+                // remove fields that should be ignored before comparing
                 o1.remove(ignoreFields);
                 o2.remove(ignoreFields);
 

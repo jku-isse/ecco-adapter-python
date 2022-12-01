@@ -63,6 +63,11 @@ public class ReaderEntryPoint {
         a.setBytes(bytes);
     }
 
+    public void setParentFieldName(Node.Op node, String parentFieldName){
+        FieldArtifactData a = ((Artifact<FieldArtifactData>) node.getArtifact()).getData();
+        a.setParentFieldName(parentFieldName);
+    }
+
     public void MakeOrdered(Node.Op node){
         node.getArtifact().setOrdered(true);
     }

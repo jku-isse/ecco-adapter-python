@@ -64,6 +64,11 @@ public class WriterEntryPoint {
         return a.getParseType();
     }
 
+    public String getParentFieldName(Node node) {
+        FieldArtifactData a = ((Artifact<FieldArtifactData>) node.getArtifact()).getData();
+        return a.getParentFieldName();
+    }
+
     public String getLine(Node node){
         try {
             LineArtifactData a = ((Artifact<LineArtifactData>) node.getArtifact()).getData();

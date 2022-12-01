@@ -6,7 +6,9 @@ import java.util.Objects;
 
 public class FieldArtifactData implements ArtifactData {
 
+    private String parentFieldName;
     private String fieldName;
+
     public FieldArtifactData(String fieldName) {
         this.fieldName = fieldName;
     }
@@ -17,6 +19,14 @@ public class FieldArtifactData implements ArtifactData {
 
     public String getFieldName() {
         return this.fieldName;
+    }
+
+    public void setParentFieldName(String parentFieldName) {
+        this.parentFieldName = parentFieldName;
+    }
+
+    public String getParentFieldName() {
+        return this.parentFieldName;
     }
 
     @Override
