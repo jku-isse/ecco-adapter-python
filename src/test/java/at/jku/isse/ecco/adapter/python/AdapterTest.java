@@ -4,7 +4,9 @@ import at.jku.isse.ecco.storage.mem.dao.MemEntityFactory;
 import at.jku.isse.ecco.tree.Node;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.fasterxml.jackson.databind.node.TextNode;
 
 import java.io.*;
 import java.nio.file.*;
@@ -46,7 +48,7 @@ public class AdapterTest {
             throw new RuntimeException(e);
         }
 
-        Path[] inputFiles = files.toArray(new Path[files.size()]);
+        Path[] inputFiles = files.toArray(new Path[0]);
 
         System.out.println("reading ...");
         PythonReader reader = new PythonReader(new MemEntityFactory());
@@ -124,7 +126,12 @@ public class AdapterTest {
             JsonNode actualObj1 = mapper.readTree(new String(Files.readAllBytes(p1)));
             JsonNode actualObj2 = mapper.readTree(new String(Files.readAllBytes(p2)));
 
-            JupyterComparator cmp = new JupyterComparator();
+            JupyterComparator cmp = new JupyterComparator(); // ignore empty line
+
+            List<String> ignoreFields = Arrays.asList("outputs", "metadata", "execution_count");
+
+            removeRecursively(actualObj1, ignoreFields);
+            removeRecursively(actualObj2, ignoreFields);
             return actualObj1.equals(cmp, actualObj2);
         } catch (NoSuchFileException e) {
             System.out.print("File not found while checking " + p2.getFileName() + " ...");
@@ -134,21 +141,29 @@ public class AdapterTest {
         return false;
     }
 
+    private static void removeRecursively(JsonNode j, Collection<String> propertyNames) {
+        if (j instanceof ObjectNode o) {
+            o.remove(propertyNames);
+            o.elements().forEachRemaining(e -> removeRecursively(e, propertyNames));
+        }
+        if (j instanceof ArrayNode a) {
+            a.elements().forEachRemaining(e -> removeRecursively(e, propertyNames));
+        }
+    }
+
     private static class JupyterComparator implements Comparator<JsonNode> {
-        private static final List<String> ignoreFields = Arrays.asList("outputs", "metadata", "execution_count");
+        private static final String pattern = "\s*\n*";
 
         @Override
         public int compare(JsonNode j1, JsonNode j2) {
 
-            if ((j1 instanceof ObjectNode o1) && (j2 instanceof ObjectNode o2)) {
-                // remove fields that should be ignored before comparing
-                o1.remove(ignoreFields);
-                o2.remove(ignoreFields);
-
-                if (o1.equals(o2)) {
+            if ((j1 instanceof TextNode t1) && (j2 instanceof TextNode t2)) {
+                if (t1.asText().matches(pattern) && t2.asText().matches(pattern)) {
                     return 0;
                 }
-            } else if (j1.equals(j2)) {
+            }
+
+            if (j1.equals(j2)) {
                 return 0;
             }
             return 1;
@@ -157,11 +172,11 @@ public class AdapterTest {
 
     /**
      * delete all files / folders of a directory (excluding root-folder)
-     * source: https://howtodoinjava.com/java/io/delete-directory-recursively/
+     * source: <a href="https://howtodoinjava.com/java/io/delete-directory-recursively/">...</a>
      */
     private static void deleteDir(Path rootDir) {
         try {
-            Files.walkFileTree(rootDir, new SimpleFileVisitor<Path>() {
+            Files.walkFileTree(rootDir, new SimpleFileVisitor<>() {
                 @Override
                 public FileVisitResult visitFile(Path file, BasicFileAttributes attrs)
                         throws IOException {
