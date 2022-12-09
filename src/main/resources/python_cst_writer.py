@@ -7,8 +7,6 @@ import libcst as cst
 from libcst import *
 from py4j.java_gateway import JavaGateway, GatewayParameters, CallbackServerParameters
 
-ep = None  # py4j gateway entry point
-
 
 def parse(java_node: object) -> CSTNode:
     artifactBytes = java_node.getTypeArtifactBytes()
@@ -68,7 +66,6 @@ def write(fileName: str):
     print(f"\nPY: Starting Writer Script for {sys.argv[1]}")
 
     gateway = JavaGateway()
-    global ep
     ep = gateway.entry_point
 
     # parse code from Java Artifact Tree
@@ -78,8 +75,8 @@ def write(fileName: str):
     else:
 
         json_dict = {
-            "nbformat": 4,
-            "nbformat_minor": 2,
+            "nbformat": root.getNbformat(),
+            "nbformat_minor": root.getNbformat_minor(),
             "cells": []
         }
 
@@ -96,7 +93,7 @@ def write(fileName: str):
                     source.append(line_node.getLine())
 
                 json_dict["cells"].append({
-                    "cell_type": "markdown",
+                    "cell_type": java_cell_node.getCellType(),
                     "source": source,
                     "metadata": {
                         "collapsed": False
@@ -113,8 +110,8 @@ def write(fileName: str):
                         source.append(line_node.getLine())
 
                     json_dict["cells"].append({
-                        "cell_type": "code",
-                        "execution_count:": None,
+                        "cell_type": java_cell_node.getCellType(),
+                        "execution_count": None,
                         "outputs": [],
                         "source": source,
                         "metadata": {
@@ -129,7 +126,7 @@ def write(fileName: str):
 
                         json_dict["cells"].append({
                             "cell_type": "code",
-                            "execution_count:": None,
+                            "execution_count": None,
                             "outputs": [],
                             "source": source.code.splitlines(True),
                             "metadata": {

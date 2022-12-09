@@ -51,11 +51,11 @@ class CSTReader(CSTTransformer):
 
         if isinstance(node, dumpNodes):
             self.stack.append(self.currentNode)
-            self.currentNode = ep.AddTypeNode(self.currentNode)
+            self.currentNode = self.currentNode.addTypeNode()
             return False
 
         self.stack.append(self.currentNode)
-        self.currentNode = ep.AddTypeNode(self.currentNode)
+        self.currentNode = self.currentNode.addTypeNode()
         return True
 
     def on_leave(self, original_node: CSTNodeT, updated_node: CSTNodeT) -> Union[
@@ -77,11 +77,11 @@ class CSTReader(CSTTransformer):
                 if updated_node.comment is None:
                     updated_node = updated_node.with_changes(indent=True)
 
-            ep.SetTypeNodeBytes(pickle.dumps(updated_node), self.currentNode)
+            self.currentNode.setBytes(pickle.dumps(updated_node))
             self.currentNode = self.stack.pop()
             return RemovalSentinel.REMOVE
 
-        ep.SetTypeNodeBytes(pickle.dumps(updated_node), self.currentNode)
+        self.currentNode.setBytes(pickle.dumps(updated_node))
         self.currentNode = self.stack.pop()
         return RemovalSentinel.REMOVE
 
@@ -100,14 +100,14 @@ class CSTReader(CSTTransformer):
             self.visitReq.append(False)
 
             self.stack.append(self.currentNode)
-            self.currentNode = ep.AddFieldNode(attribute, self.currentNode)
+            self.currentNode = self.currentNode.addFieldNode(attribute)
 
             if isinstance(node, BaseSuite):
-                ep.setParentFieldName(self.currentNode, self.parentFieldStack[-1])
+                self.currentNode.setParentFieldName(self.parentFieldStack[-1])
 
             # lists and tuples can have elements of same type > ordered node
             if isinstance(getattr(node, attribute), (list, tuple)):
-                ep.MakeOrdered(self.currentNode)
+                self.currentNode.makeOrdered()
 
     def on_leave_attribute(self, original_node: CSTNode, attribute: str) -> None:
         if getattr(original_node, attribute) is None:  # ignore empty attributes
@@ -138,10 +138,10 @@ def parseCode(code, parentNode):
 
 
 def parseLines(cell, parentNode):
-    ep.MakeOrdered(parentNode)
+    parentNode.makeOrdered()
     # metadata??
     for source_line in cell["source"]:
-        ep.AddLineNode(parentNode, source_line)
+        parentNode.addLineNode(source_line)
 
 
 def read(fileName: str):
@@ -158,31 +158,31 @@ def read(fileName: str):
         data = normalizeEmptyLines(f.read())
         # parse code
         code = parse_module(data)
-        code = code.visit(CSTReader(None))
+        code = code.visit(CSTReader(ep.getStartingNode()))
     elif fileName.endswith(".ipynb"):
         data = json.load(f)
 
-        root = ep.AddJupyterArtifactNode(None, data["nbformat"], data["nbformat_minor"])
+        root = ep.getStartingNode().addJupyterNotebookNode(data["nbformat"], data["nbformat_minor"])
 
-        cellsField = ep.AddFieldNode("cells", root)
-        ep.MakeOrdered(cellsField)
+        cellsField = root.addFieldNode("cells")
+        cellsField.makeOrdered()
 
         for cell in data["cells"]:
-            cellNode = ep.AddJupyterCellNode(cellsField, str(cell["cell_type"]))
+            cellNode = cellsField.addJupyterCellNode(str(cell["cell_type"]))
             if cell["cell_type"] == "code":
                 try:
                     st = ''.join(cell["source"])
-                    parsedCode = parse_module(st)
-                    ep.setParseType(cellNode, "code")
+                    parsedCode = parse_module(normalizeEmptyLines(st))
+                    cellNode.setParseType("code")
                     parseCode(parsedCode, cellNode)
                 except ParserSyntaxError:
-                    ep.setParseType(cellNode, "markdown")  # type = code
+                    cellNode.setParseType("markdown")  # type = code
                     parseLines(cell, cellNode)
                 except Exception as e:
                     print(e)
 
             elif cell["cell_type"] == "markdown":
-                ep.setParseType(cellNode, "markdown")  # type = markdown
+                cellNode.setParseType("markdown")  # type = markdown
                 parseLines(cell, cellNode)
                 # metadata : dict {collapsed: False}
 
