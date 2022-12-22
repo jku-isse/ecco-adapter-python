@@ -4,7 +4,7 @@ import at.jku.isse.ecco.adapter.python.data.FieldArtifactData;
 import at.jku.isse.ecco.adapter.python.data.TypeArtifactData;
 import at.jku.isse.ecco.adapter.python.data.jupyter.JupyterCellArtifactData;
 import at.jku.isse.ecco.adapter.python.data.jupyter.JupyterNotebookArtifactData;
-import at.jku.isse.ecco.adapter.python.data.jupyter.LineArtifactData;
+import at.jku.isse.ecco.adapter.python.data.jupyter.JupyterLineArtifactData;
 import at.jku.isse.ecco.tree.Node;
 
 import java.util.ArrayList;
@@ -67,12 +67,12 @@ public record WriterNode(Node node) {
     // JupyterNotebookArtifact -----------------------------------------------------------------------------------------
     public int getNbformat() {
         JupyterNotebookArtifactData a = (JupyterNotebookArtifactData) node.getArtifact().getData();
-        return a.getNbformat();
+        return a.getNbFormat();
     }
 
     public int getNbformat_minor() {
         JupyterNotebookArtifactData a = (JupyterNotebookArtifactData) node.getArtifact().getData();
-        return a.getNbformat_minor();
+        return a.getNbFormatMinor();
     }
 
     // JupyterCellArtifact ---------------------------------------------------------------------------------------------
@@ -86,9 +86,9 @@ public record WriterNode(Node node) {
         return a.getParseType();
     }
 
-    // LineArtifact ----------------------------------------------------------------------------------------------------
+    // JupyterLineArtifact ----------------------------------------------------------------------------------------------------
     public String getLine() {
-        LineArtifactData a = (LineArtifactData) node.getArtifact().getData();
+        JupyterLineArtifactData a = (JupyterLineArtifactData) node.getArtifact().getData();
         return a.getLine();
     }
 }

@@ -141,7 +141,7 @@ def parseLines(cell, parentNode):
     parentNode.makeOrdered()
     # metadata??
     for source_line in cell["source"]:
-        parentNode.addLineNode(source_line)
+        parentNode.addJupyterLineNode(source_line)
 
 
 def read(fileName: str):

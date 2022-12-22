@@ -4,10 +4,10 @@ import at.jku.isse.ecco.artifact.ArtifactData;
 
 import java.util.Objects;
 
-public class LineArtifactData implements ArtifactData {
+public class JupyterLineArtifactData implements ArtifactData {
 
     private String line;
-    public LineArtifactData(String line) {
+    public JupyterLineArtifactData(String line) {
         this.line = line;
     }
 
@@ -37,12 +37,9 @@ public class LineArtifactData implements ArtifactData {
             return false;
         if (getClass() != obj.getClass())
             return false;
-        LineArtifactData other = (LineArtifactData) obj;
+        JupyterLineArtifactData other = (JupyterLineArtifactData) obj;
         if (line == null) {
-            if (other.line != null)
-                return false;
-        } else if (!line.equals(other.line))
-            return false;
-        return true;
+            return other.line == null;
+        } else return line.equals(other.line);
     }
 }

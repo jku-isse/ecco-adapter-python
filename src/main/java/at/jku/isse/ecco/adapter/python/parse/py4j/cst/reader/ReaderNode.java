@@ -4,7 +4,7 @@ import at.jku.isse.ecco.adapter.python.data.FieldArtifactData;
 import at.jku.isse.ecco.adapter.python.data.TypeArtifactData;
 import at.jku.isse.ecco.adapter.python.data.jupyter.JupyterCellArtifactData;
 import at.jku.isse.ecco.adapter.python.data.jupyter.JupyterNotebookArtifactData;
-import at.jku.isse.ecco.adapter.python.data.jupyter.LineArtifactData;
+import at.jku.isse.ecco.adapter.python.data.jupyter.JupyterLineArtifactData;
 import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.artifact.ArtifactData;
 import at.jku.isse.ecco.dao.EntityFactory;
@@ -76,8 +76,8 @@ public record ReaderNode(Node.Op node) {
         a.setParseType(parseType);
     }
 
-    // LineArtifact ----------------------------------------------------------------------------------------------------
-    public ReaderNode addLineNode(String line) {
-        return addNode(new LineArtifactData(line));
+    // JupyterLineArtifact ----------------------------------------------------------------------------------------------------
+    public ReaderNode addJupyterLineNode(String line) {
+        return addNode(new JupyterLineArtifactData(line));
     }
 }

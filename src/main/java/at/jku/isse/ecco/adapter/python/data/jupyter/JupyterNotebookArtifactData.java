@@ -6,34 +6,38 @@ import java.util.Objects;
 
 public class JupyterNotebookArtifactData implements ArtifactData {
 
-    private int nbformat;
-    private int nbformat_minor;
+    private int nbFormat;
+    private int nbFormatMinor;
 
-    public JupyterNotebookArtifactData(int nbformat, int nbformat_minor) {
-        this.nbformat = nbformat;
-        this.nbformat_minor = nbformat_minor;
+    public JupyterNotebookArtifactData(int nbFormat, int nbFormatMinor) {
+        this.nbFormat = nbFormat;
+        this.nbFormatMinor = nbFormatMinor;
     }
 
-    public void setNbformat(int nbformat) {
-        this.nbformat = nbformat;
+    public void setNbFormat(int nbFormat) {
+        this.nbFormat = nbFormat;
     }
 
-    public int getNbformat() {
-        return this.nbformat;
+    public int getNbFormat() {
+        return this.nbFormat;
     }
 
-    public int getNbformat_minor() {
-        return this.nbformat_minor;
+    public void setNbFormatMinor(int nbFormatMinor) {
+        this.nbFormatMinor = nbFormatMinor;
+    }
+
+    public int getNbFormatMinor() {
+        return this.nbFormatMinor;
     }
 
     @Override
     public String toString() {
-        return "nbformat: " + this.nbformat + ", nbformat_minor: " + this.nbformat_minor;
+        return "JupyterNotebookArtifactData(nbformat: " + this.nbFormat + ", nbformat_minor: " + this.nbFormatMinor + ")";
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(this.nbformat, this.nbformat_minor);
+        return Objects.hash(this.nbFormat, this.nbFormatMinor);
     }
 
     @Override
@@ -45,6 +49,6 @@ public class JupyterNotebookArtifactData implements ArtifactData {
         if (getClass() != obj.getClass())
             return false;
         JupyterNotebookArtifactData other = (JupyterNotebookArtifactData) obj;
-        return (nbformat == other.nbformat && nbformat_minor == other.nbformat_minor);
+        return (nbFormat == other.nbFormat && nbFormatMinor == other.nbFormatMinor);
     }
 }
