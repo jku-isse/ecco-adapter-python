@@ -39,7 +39,8 @@ public class PY4JCSTReadParser extends PY4JParser implements PythonParser.Reader
                 //logOutput(process);
                 exitCode = process.exitValue();
                 if (exitCode == 0) {
-                    LOGGER.log(Level.INFO, "Parsing (read) successful (exit-code: {0}); created {1} nodes in {1}ms", new Object[]{exitCode, readerGateway.getNodesCount(), (System.nanoTime() - tm) / 1000000});
+                    LOGGER.log(Level.INFO, "Parsing (read) successful (exit-code: {0}); created {1} nodes in {2}ms",
+                            new Object[]{exitCode, readerGateway.getNodesCount(), (System.nanoTime() - tm) / 1000000});
                     return readerGateway.getRoot();
                 } else {
                     LOGGER.severe("Parce exited with code " + exitCode + ":\n" + getStackTrace(process));
