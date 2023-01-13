@@ -21,6 +21,9 @@ public class AdapterTest {
         final String python = ".py";
         final String jupyter = "ipynb";
 
+        // final String[] excludedFolders = new String[] {"yolov5-master", "ass1", "ass2"};
+        final String[] excludedFolders = new String[] {};
+
         File readFolder = new File("adapter/python/src/test/resources/read/");
         File writeFolder = new File("adapter/python/src/test/resources/write/");
 
@@ -43,7 +46,9 @@ public class AdapterTest {
                             }
                     );
 
-            files = s2.filter(f -> !Files.isDirectory(f)).filter(f -> f.getFileName().toString().endsWith(python) || f.getFileName().toString().endsWith(jupyter)).toList();
+            files = s2.filter(f -> !Files.isDirectory(f))
+                    .filter(f-> Arrays.stream(excludedFolders).noneMatch(s -> f.toAbsolutePath().toString().contains(s)))
+                    .filter(f -> f.getFileName().toString().endsWith(python) || f.getFileName().toString().endsWith(jupyter)).toList();
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -103,6 +108,7 @@ public class AdapterTest {
                 } else if (line1.matches(pattern) && line2.matches(pattern)) {
                     // continue - empty lines are normalized
                 } else if (!line1.equalsIgnoreCase(line2)) {
+                    System.out.println(line1);
                     return false;
                 }
 
