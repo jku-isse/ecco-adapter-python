@@ -12,54 +12,44 @@ def parse(java_node: object) -> CSTNode:
     artifactBytes = java_node.getTypeArtifactBytes()
     cst_current_node = pickle.loads(artifactBytes)
 
-    # print(type(cst_current_node))
-    # if isinstance(cst_current_node, EmptyLine):
-    #     print(cst_current_node.indent)
-
+    fields = {}
     java_field_nodes = java_node.getChildren()
     for fieldIdx in range(len(java_field_nodes)):
         java_field_node = java_field_nodes[fieldIdx]
         cst_attribute_name = java_field_node.getFieldArtifactName()
-        # print(cst_attribute_name)
-
-        if java_field_node.getParentFieldName() is not None:
-            cst_node_to_add_field = getattr(cst_current_node, java_field_node.getParentFieldName())
-        else:
-            cst_node_to_add_field = cst_current_node
 
         java_child_nodes = java_field_node.getChildren()
+
+        attributes = None
         for childIdx in range(len(java_child_nodes)):
             java_child = java_child_nodes[childIdx]
             cst_child_node = parse(java_child)
-            # print("\t" + str(type(cst_child_node)))
 
-            pars = None
-            if getattr(cst_node_to_add_field, cst_attribute_name) is not None:
-                # orelse in If can be None
-                # lpar / rPar can be MaybeSentinel -
-                if not isinstance(getattr(cst_node_to_add_field, cst_attribute_name), MaybeSentinel):
-                    try:
-                        pars = {
-                            cst_attribute_name: (*getattr(cst_node_to_add_field, cst_attribute_name), cst_child_node)}
-                    except Exception as e:
-                        print(cst_attribute_name)
-                        print(getattr(cst_node_to_add_field, cst_attribute_name))
-                        print(e)
+            try:
+                if attributes is not None:
+                    attributes = (*attributes, cst_child_node)
                 else:
-                    pass  # MaybeSentinel - pars stays None
+                    if java_field_node.isOrdered():
+                        attributes = (cst_child_node,)
+                    else:
+                        attributes = cst_child_node
+            except Exception as e:
+                # for debugging
+                print(cst_attribute_name)
+                print(e)
+
+        if attributes is not None:
+            if java_field_node.getParentFieldName() is not None:
+                cst_node_to_add_field = getattr(cst_current_node, java_field_node.getParentFieldName())
+                cst_node_to_add_field = cst_node_to_add_field.with_changes(**{cst_attribute_name: attributes})
+                pars = {java_field_node.getParentFieldName(): cst_node_to_add_field}
+                # fields.update({java_field_node.getParentFieldName(): cst_node_to_add_field})
+                cst_current_node = cst_current_node.with_changes(**pars)
             else:
-                pars = {cst_attribute_name: cst_child_node}
+                # add to dict for later update
+                fields.update({cst_attribute_name: attributes})
 
-            if pars is not None:
-                cst_node_to_add_field = cst_node_to_add_field.with_changes(**pars)
-
-        if java_field_node.getParentFieldName() is not None:
-            pars = {java_field_node.getParentFieldName(): cst_node_to_add_field}
-            cst_current_node = cst_current_node.with_changes(**pars)
-        else:
-            cst_current_node = cst_node_to_add_field
-
-    return cst_current_node
+    return cst_current_node.with_changes(**fields)
 
 
 def write(fileName: str):

@@ -8,13 +8,11 @@ import libcst as cst
 from libcst import *
 from py4j.java_gateway import JavaGateway
 
-ep = None  # py4j gateway entry point
-
 # no visiting, but dumped entirely
 dumpNodes = (EmptyLine, BaseExpression)
 
 # no visiting, no dumping, saved with parent dump
-# these nodes need to be kept with their parent as identifier (i.e. Nam
+# these nodes need to be kept with their parent as identifier (i.e. Name)
 skipNodes = (ImportAlias, AssignTarget, ImportFrom, WithItem, MaybeSentinel, ExceptHandler, ExceptStarHandler, Finally)
 
 
@@ -149,7 +147,6 @@ def read(fileName: str):
 
     # access java gateway and entry point
     gateway = JavaGateway()
-    global ep
     ep = gateway.entry_point
 
     f = open(fileName, "r", -1, "UTF-8")  # open file
