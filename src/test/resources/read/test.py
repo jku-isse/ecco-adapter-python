@@ -19,7 +19,7 @@ def print_hi(name):
 
 
 
-class TestClass:
+class TestClass():
 
     def __init__(self):
         x = 5
