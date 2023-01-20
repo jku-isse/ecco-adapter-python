@@ -23,7 +23,7 @@ public class PythonReader implements ArtifactReader<Path, Set<Node.Op>> {
 
     static {
         prioritizedPatterns = new HashMap<>();
-        prioritizedPatterns.put(1, new String[]{"**.py", "**.ipynb"});
+        prioritizedPatterns.put(1, new String[]{"**.py", "**.ipynb", "**.json"});
     }
     private static final Logger LOGGER = Logger.getLogger(PythonPlugin.class.getName());
 

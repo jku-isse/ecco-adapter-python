@@ -1,10 +1,13 @@
 package at.jku.isse.ecco.adapter.python.parse.py4j.cst.writer;
 
-import at.jku.isse.ecco.adapter.python.data.FieldArtifactData;
-import at.jku.isse.ecco.adapter.python.data.TypeArtifactData;
+import at.jku.isse.ecco.adapter.python.data.json.JsonArrayArtifactData;
+import at.jku.isse.ecco.adapter.python.data.json.JsonFieldArtifactData;
+import at.jku.isse.ecco.adapter.python.data.json.JsonObjectArtifactData;
+import at.jku.isse.ecco.adapter.python.data.json.value.*;
 import at.jku.isse.ecco.adapter.python.data.jupyter.JupyterCellArtifactData;
-import at.jku.isse.ecco.adapter.python.data.jupyter.JupyterNotebookArtifactData;
 import at.jku.isse.ecco.adapter.python.data.jupyter.JupyterLineArtifactData;
+import at.jku.isse.ecco.adapter.python.data.python.PythonFieldArtifactData;
+import at.jku.isse.ecco.adapter.python.data.python.PythonTypeArtifactData;
 import at.jku.isse.ecco.tree.Node;
 
 import java.util.ArrayList;
@@ -15,7 +18,7 @@ public record WriterNode(Node node) {
 
     // provides methods to be called from python writer script
 
-    // Node ------------------------------------------------------------------------------------------------------------
+    //region Node ------------------------------------------------------------------------------------------------------
     public boolean isOrdered() {
         return node.getArtifact().isOrdered();
     }
@@ -27,18 +30,21 @@ public record WriterNode(Node node) {
         }
         return list;
     }
+    //endregion
 
-    // TypeArtifact ----------------------------------------------------------------------------------------------------
+    //region PythonArtifacts -------------------------------------------------------------------------------------------
+    // TypeArtifact
     public boolean isType() {
         return node != null && node.getArtifact() != null && node.getArtifact().getData() != null &&
-                node.getArtifact().getData() instanceof TypeArtifactData;
+                node.getArtifact().getData() instanceof PythonTypeArtifactData;
     }
 
     public byte[] getTypeArtifactBytes() {
-        TypeArtifactData a = (TypeArtifactData) node.getArtifact().getData();
+        PythonTypeArtifactData a = (PythonTypeArtifactData) node.getArtifact().getData();
         return a.getBytes();
     }
 
+    // PythonFieldArtifact
     public WriterNode getField(String fieldName) throws Exception {
         for (WriterNode n : getChildren()) {
             if (n.getFieldArtifactName().equals(fieldName)) {
@@ -48,34 +54,90 @@ public record WriterNode(Node node) {
         throw new NoSuchFieldException("Field with name " + fieldName + "not found!");
     }
 
-    // FieldArtifact ---------------------------------------------------------------------------------------------------
     public boolean isField() {
         return node != null && node.getArtifact() != null && node.getArtifact().getData() != null &&
-                node.getArtifact().getData() instanceof FieldArtifactData;
+                node.getArtifact().getData() instanceof PythonFieldArtifactData;
     }
 
     public String getFieldArtifactName() {
-        FieldArtifactData d = (FieldArtifactData) node.getArtifact().getData();
+        PythonFieldArtifactData d = (PythonFieldArtifactData) node.getArtifact().getData();
         return d.getFieldName();
     }
 
     public String getParentFieldName() {
-        FieldArtifactData a = (FieldArtifactData) node.getArtifact().getData();
+        PythonFieldArtifactData a = (PythonFieldArtifactData) node.getArtifact().getData();
         return a.getParentFieldName();
     }
+    //endregion
 
-    // JupyterNotebookArtifact -----------------------------------------------------------------------------------------
-    public int getNbformat() {
-        JupyterNotebookArtifactData a = (JupyterNotebookArtifactData) node.getArtifact().getData();
-        return a.getNbFormat();
+    //region JsonArtifacts ---------------------------------------------------------------------------------------------
+    public boolean isJsonObject() {
+        return node != null && node.getArtifact() != null && node.getArtifact().getData() != null &&
+                node.getArtifact().getData() instanceof JsonObjectArtifactData;
     }
 
-    public int getNbformat_minor() {
-        JupyterNotebookArtifactData a = (JupyterNotebookArtifactData) node.getArtifact().getData();
-        return a.getNbFormatMinor();
+    public String getJsonFieldName() {
+        JsonFieldArtifactData d = (JsonFieldArtifactData) node.getArtifact().getData();
+        return d.getFieldName();
     }
 
-    // JupyterCellArtifact ---------------------------------------------------------------------------------------------
+    public boolean isJsonArray() {
+        return node != null && node.getArtifact() != null && node.getArtifact().getData() != null &&
+                node.getArtifact().getData() instanceof JsonArrayArtifactData;
+    }
+
+    public boolean isJsonString() {
+        return node != null && node.getArtifact() != null && node.getArtifact().getData() != null &&
+                node.getArtifact().getData() instanceof JsonStringArtifactData;
+    }
+
+    public String getJsonString() {
+        JsonStringArtifactData a = (JsonStringArtifactData) node.getArtifact().getData();
+        return a.getValue();
+    }
+
+    public boolean isJsonInteger() {
+        return node != null && node.getArtifact() != null && node.getArtifact().getData() != null &&
+                node.getArtifact().getData() instanceof JsonIntegerArtifactData;
+    }
+
+    public long getJsonInteger() {
+        JsonIntegerArtifactData a = (JsonIntegerArtifactData) node.getArtifact().getData();
+        return a.getValue();
+    }
+
+    public boolean isJsonRealNumber() {
+        return node != null && node.getArtifact() != null && node.getArtifact().getData() != null &&
+                node.getArtifact().getData() instanceof JsonRealNumberArtifactData;
+    }
+
+    public double getJsonRealNumber() {
+        JsonRealNumberArtifactData a = (JsonRealNumberArtifactData) node.getArtifact().getData();
+        return a.getValue();
+    }
+
+    public boolean isJsonBoolean() {
+        return node != null && node.getArtifact() != null && node.getArtifact().getData() != null &&
+                node.getArtifact().getData() instanceof JsonBooleanArtifactData;
+    }
+
+    public boolean getJsonBoolean() {
+        JsonBooleanArtifactData a = (JsonBooleanArtifactData) node.getArtifact().getData();
+        return a.getValue();
+    }
+
+    public boolean isJsonNullValue() {
+        return node != null && node.getArtifact() != null && node.getArtifact().getData() != null &&
+                node.getArtifact().getData() instanceof JsonNullValueArtifactData;
+    }
+    //endregion
+
+    //region JupyterArtifacts ------------------------------------------------------------------------------------------
+    public boolean isJupyterCell() {
+        return node != null && node.getArtifact() != null && node.getArtifact().getData() != null &&
+                node.getArtifact().getData() instanceof JupyterCellArtifactData;
+    }
+
     public String getCellType() {
         JupyterCellArtifactData a = (JupyterCellArtifactData) node.getArtifact().getData();
         return a.getCellType();
@@ -86,9 +148,9 @@ public record WriterNode(Node node) {
         return a.getParseType();
     }
 
-    // JupyterLineArtifact ----------------------------------------------------------------------------------------------------
     public String getLine() {
         JupyterLineArtifactData a = (JupyterLineArtifactData) node.getArtifact().getData();
         return a.getLine();
     }
+    //endregion
 }
