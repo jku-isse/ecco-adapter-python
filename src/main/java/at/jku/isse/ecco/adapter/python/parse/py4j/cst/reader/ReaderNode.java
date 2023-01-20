@@ -1,10 +1,13 @@
 package at.jku.isse.ecco.adapter.python.parse.py4j.cst.reader;
 
-import at.jku.isse.ecco.adapter.python.data.FieldArtifactData;
-import at.jku.isse.ecco.adapter.python.data.TypeArtifactData;
+import at.jku.isse.ecco.adapter.python.data.json.JsonArrayArtifactData;
+import at.jku.isse.ecco.adapter.python.data.json.JsonFieldArtifactData;
+import at.jku.isse.ecco.adapter.python.data.json.JsonObjectArtifactData;
+import at.jku.isse.ecco.adapter.python.data.json.value.*;
 import at.jku.isse.ecco.adapter.python.data.jupyter.JupyterCellArtifactData;
-import at.jku.isse.ecco.adapter.python.data.jupyter.JupyterNotebookArtifactData;
 import at.jku.isse.ecco.adapter.python.data.jupyter.JupyterLineArtifactData;
+import at.jku.isse.ecco.adapter.python.data.python.PythonFieldArtifactData;
+import at.jku.isse.ecco.adapter.python.data.python.PythonTypeArtifactData;
 import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.artifact.ArtifactData;
 import at.jku.isse.ecco.dao.EntityFactory;
@@ -22,7 +25,7 @@ public record ReaderNode(Node.Op node) {
         ReaderNode.readerEntryPoint = readerEntryPoint;
     }
 
-    // Node ------------------------------------------------------------------------------------------------------------
+    //region Node ------------------------------------------------------------------------------------------------------
     private ReaderNode addNode(ArtifactData artifactData) {
         Artifact.Op<?> artifact = entityFactory.createArtifact(artifactData);
         Node.Op child = entityFactory.createNode(artifact);
@@ -40,33 +43,67 @@ public record ReaderNode(Node.Op node) {
     public void makeOrdered() {
         node.getArtifact().setOrdered(true);
     }
+    //endregion
 
-    // TypeArtifact ----------------------------------------------------------------------------------------------------
+    //region PythonArtifacts -------------------------------------------------------------------------------------------
+    // PythonTypeArtifact
     public ReaderNode addTypeNode() {
-        return addNode(new TypeArtifactData());
+        return addNode(new PythonTypeArtifactData());
     }
 
     public void setBytes(byte[] bytes) throws ClassCastException {
-        TypeArtifactData a = (TypeArtifactData) node.getArtifact().getData();
+        PythonTypeArtifactData a = (PythonTypeArtifactData) node.getArtifact().getData();
         a.setBytes(bytes);
     }
 
-    // FieldArtifact ---------------------------------------------------------------------------------------------------
+    // PythonFieldArtifact
     public ReaderNode addFieldNode(String fieldName) {
-        return addNode(new FieldArtifactData(fieldName));
+        return addNode(new PythonFieldArtifactData(fieldName));
     }
 
     public void setParentFieldName(String parentFieldName) throws ClassCastException {
-        FieldArtifactData a = (FieldArtifactData) node.getArtifact().getData();
+        PythonFieldArtifactData a = (PythonFieldArtifactData) node.getArtifact().getData();
         a.setParentFieldName(parentFieldName);
     }
+    //endregion
 
-    // JupyterNotebookArtifact -----------------------------------------------------------------------------------------
-    public ReaderNode addJupyterNotebookNode(int nbformat, int nbformat_minor) {
-        return addNode(new JupyterNotebookArtifactData(nbformat, nbformat_minor));
+    //region JsonArtifacts ---------------------------------------------------------------------------------------------
+    public ReaderNode addJsonObjectNode() {
+        return addNode(new JsonObjectArtifactData());
     }
 
-    // JupyterCellArtifact ---------------------------------------------------------------------------------------------
+    public ReaderNode addJsonFieldNode(String fieldName) {
+        return addNode(new JsonFieldArtifactData(fieldName));
+    }
+
+    public ReaderNode addJsonArrayNode() {
+        ReaderNode node = addNode(new JsonArrayArtifactData());
+        node.makeOrdered();
+        return node;
+    }
+
+    public ReaderNode addJsonBooleanNode(boolean value) {
+        return addNode(new JsonBooleanArtifactData(value));
+    }
+
+    public ReaderNode addJsonStringNode(String value) {
+        return addNode(new JsonStringArtifactData(value));
+    }
+
+    public ReaderNode addJsonIntegerNode(long value) {
+        return addNode(new JsonIntegerArtifactData(value));
+    }
+
+    public ReaderNode addJsonRealNumberNode(double value) {
+        return addNode(new JsonRealNumberArtifactData(value));
+    }
+
+    public ReaderNode addJsonNullValueNode() {
+        return addNode(new JsonNullValueArtifactData());
+    }
+    //endregion
+
+    //region JupyterArtifacts ------------------------------------------------------------------------------------------
     public ReaderNode addJupyterCellNode(String cell_type) {
         return addNode(new JupyterCellArtifactData(cell_type));
     }
@@ -76,8 +113,9 @@ public record ReaderNode(Node.Op node) {
         a.setParseType(parseType);
     }
 
-    // JupyterLineArtifact ----------------------------------------------------------------------------------------------------
+    // JupyterLineArtifact
     public ReaderNode addJupyterLineNode(String line) {
         return addNode(new JupyterLineArtifactData(line));
     }
+    //endregion
 }

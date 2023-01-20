@@ -1,15 +1,15 @@
-package at.jku.isse.ecco.adapter.python.data;
+package at.jku.isse.ecco.adapter.python.data.python;
 
 import at.jku.isse.ecco.artifact.ArtifactData;
 
 import java.util.Objects;
 
-public class FieldArtifactData implements ArtifactData {
+public class PythonFieldArtifactData implements ArtifactData {
 
     private String parentFieldName;
     private String fieldName;
 
-    public FieldArtifactData(String fieldName) {
+    public PythonFieldArtifactData(String fieldName) {
         this.fieldName = fieldName;
     }
 
@@ -36,23 +36,14 @@ public class FieldArtifactData implements ArtifactData {
 
     @Override
     public int hashCode() {
-        return Objects.hash(this.fieldName);
+        return Objects.hash(parentFieldName, fieldName);
     }
 
     @Override
-    public boolean equals(Object obj) {
-        if (this == obj)
-            return true;
-        if (obj == null)
-            return false;
-        if (getClass() != obj.getClass())
-            return false;
-        FieldArtifactData other = (FieldArtifactData) obj;
-        if (fieldName == null) {
-            if (other.fieldName != null)
-                return false;
-        } else if (!fieldName.equals(other.fieldName))
-            return false;
-        return true;
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        PythonFieldArtifactData that = (PythonFieldArtifactData) o;
+        return Objects.equals(parentFieldName, that.parentFieldName) && Objects.equals(fieldName, that.fieldName);
     }
 }

@@ -20,8 +20,9 @@ public class AdapterTest {
 
         final String python = ".py";
         final String jupyter = "ipynb";
+        final String json = "json";
 
-        // final String[] excludedFolders = new String[] {"yolov5-master", "ass1", "ass2"};
+        //final String[] excludedFolders = new String[]{"yolov5-master", "ass1", "ass2"};
         final String[] excludedFolders = new String[] {};
 
         File readFolder = new File("adapter/python/src/test/resources/read/");
@@ -47,8 +48,8 @@ public class AdapterTest {
                     );
 
             files = s2.filter(f -> !Files.isDirectory(f))
-                    .filter(f-> Arrays.stream(excludedFolders).noneMatch(s -> f.toAbsolutePath().toString().contains(s)))
-                    .filter(f -> f.getFileName().toString().endsWith(python) || f.getFileName().toString().endsWith(jupyter)).toList();
+                    .filter(f -> Arrays.stream(excludedFolders).noneMatch(s -> f.toAbsolutePath().toString().contains(s)))
+                    .filter(f -> f.getFileName().toString().endsWith(python) || f.getFileName().toString().endsWith(jupyter) || f.getFileName().toString().endsWith(json)).toList();
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -74,19 +75,22 @@ public class AdapterTest {
             Path outputPath = readPath.relativize(inputPath);
             outputPath = writePath.resolve(outputPath);
 
+            boolean identical = false;
             if (inputPath.toString().endsWith(python)) {
-                if (!comparePythonFiles(inputPath, outputPath)) {
-                    System.out.println("Writing of " + outputPath + " NOT identical");
-                    allIdentical = false;
-                }
+                identical = comparePythonFiles(inputPath, outputPath);
+            } else if (inputPath.toString().endsWith(json)) {
+                identical = compareJsonFiles(inputPath, outputPath);
             } else if (inputPath.toString().endsWith(jupyter)) {
-                if (!compareJupyterFiles(inputPath, outputPath)) {
-                    System.out.println("Writing of " + outputPath + " NOT identical");
-                    allIdentical = false;
-                }
+                identical = compareJupyterFiles(inputPath, outputPath);
             } else {
                 System.out.println("Unknown File extension");
             }
+
+            if (!identical) {
+                System.out.println("Writing of " + outputPath + " NOT identical");
+                allIdentical = false;
+            }
+
         }
         if (allIdentical) {
             System.out.println("checking for equality ... successful - all files are identical");
@@ -108,7 +112,6 @@ public class AdapterTest {
                 } else if (line1.matches(pattern) && line2.matches(pattern)) {
                     // continue - empty lines are normalized
                 } else if (!line1.equalsIgnoreCase(line2)) {
-                    System.out.println(line1);
                     return false;
                 }
 
@@ -125,12 +128,28 @@ public class AdapterTest {
         return true;
     }
 
-    private static boolean compareJupyterFiles(Path p1, Path p2) {
+    private static boolean compareJsonFiles(Path p1, Path p2) {
         try {
             ObjectMapper mapper = new ObjectMapper();
 
             JsonNode actualObj1 = mapper.readTree(new String(Files.readAllBytes(p1)));
             JsonNode actualObj2 = mapper.readTree(new String(Files.readAllBytes(p2)));
+
+            return actualObj1.equals(actualObj2);
+        } catch (NoSuchFileException e) {
+            System.out.print("File not found while checking " + p2.getFileName() + " ...");
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return false;
+    }
+
+    private static boolean compareJupyterFiles(Path p1, Path p2) {
+        try {
+            ObjectMapper mapper = new ObjectMapper();
+
+            JsonNode actualObj1 = mapper.readTree(Files.readString(p1));
+            JsonNode actualObj2 = mapper.readTree(Files.readString(p2));
 
             JupyterComparator cmp = new JupyterComparator(); // ignore empty line
 

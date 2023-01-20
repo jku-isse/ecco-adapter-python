@@ -26,20 +26,14 @@ public class JupyterLineArtifactData implements ArtifactData {
 
     @Override
     public int hashCode() {
-        return Objects.hash(this.line);
+        return Objects.hash(line);
     }
 
     @Override
-    public boolean equals(Object obj) {
-        if (this == obj)
-            return true;
-        if (obj == null)
-            return false;
-        if (getClass() != obj.getClass())
-            return false;
-        JupyterLineArtifactData other = (JupyterLineArtifactData) obj;
-        if (line == null) {
-            return other.line == null;
-        } else return line.equals(other.line);
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        JupyterLineArtifactData that = (JupyterLineArtifactData) o;
+        return Objects.equals(line, that.line);
     }
 }

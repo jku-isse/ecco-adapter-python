@@ -4,6 +4,7 @@ import pickle
 import sys
 from typing import Optional, Tuple, List, Sequence, Union
 
+import libcst
 import libcst as cst
 from libcst import *
 from py4j.java_gateway import JavaGateway
@@ -131,15 +132,64 @@ def normalizeEmptyLines(content: str) -> str:
     return '\n'.join(lines)
 
 
-def parseCode(code, parentNode):
-    code.visit(CSTReader(parentNode))
-
-
-def parseLines(cell, parentNode):
+def parseJupyterCellLines(cell, parentNode):
     parentNode.makeOrdered()
     # metadata??
     for source_line in cell["source"]:
         parentNode.addJupyterLineNode(source_line)
+
+
+def parseJson(cell, parentNode):
+
+    if isinstance(cell, dict):
+        objectNode = parentNode.addJsonObjectNode()
+        for key, value in cell.items():
+            fieldNode = objectNode.addJsonFieldNode(key)
+            parseJson(value, fieldNode)
+
+    elif isinstance(cell, list):
+        arrayNode = parentNode.addJsonArrayNode()
+        for element in cell:
+            parseJson(element, arrayNode)
+
+    elif isinstance(cell, bool):
+        parentNode.addJsonBooleanNode(cell)
+    elif isinstance(cell, str):
+        parentNode.addJsonStringNode(cell)
+    elif isinstance(cell, int):
+        parentNode.addJsonIntegerNode(cell)
+    elif isinstance(cell, float):
+        parentNode.addJsonRealNumberNode(cell)
+    elif cell is None:
+        parentNode.addJsonNullValueNode()
+    else:
+        raise Exception("Unexpected value found in Json-Cell")
+
+
+def parseJupyterCellArray(cellArray, parentNode):
+
+    if isinstance(cellArray, list):
+        arrayNode = parentNode.addJsonArrayNode()
+        for cell in cellArray:
+            cellNode = arrayNode.addJupyterCellNode(str(cell["cell_type"]))
+            if cell["cell_type"] == "code":
+                try:
+                    st = ''.join(cell["source"])
+                    parsedCode = parse_module(normalizeEmptyLines(st))
+                    cellNode.setParseType("code")
+                    parsedCode.visit(CSTReader(cellNode))
+                except ParserSyntaxError:
+                    cellNode.setParseType("markdown")
+                    parseJupyterCellLines(cell, cellNode)
+                except Exception as e:
+                    print(e)
+
+            elif cell["cell_type"] == "markdown":
+                cellNode.setParseType("markdown")
+                parseJupyterCellLines(cell, cellNode)
+                # metadata : dict {collapsed: False}
+    else:
+        raise Exception("Expected Jupyter Cell-Array (list), but got " + str(type(cellArray)))
 
 
 def read(fileName: str):
@@ -155,33 +205,27 @@ def read(fileName: str):
         data = normalizeEmptyLines(f.read())
         # parse code
         code = parse_module(data)
-        code = code.visit(CSTReader(ep.getStartingNode()))
+        code.visit(CSTReader(ep.getStartingNode()))
     elif fileName.endswith(".ipynb"):
         data = json.load(f)
 
-        root = ep.getStartingNode().addJupyterNotebookNode(data["nbformat"], data["nbformat_minor"])
+        if isinstance(data, dict):
+            objectNode = ep.getStartingNode().addJsonObjectNode()
+            for key, value in data.items():
+                fieldNode = objectNode.addJsonFieldNode(key)
+                if key == "cells":
+                    parseJupyterCellArray(value, fieldNode)
+                else:
+                    parseJson(value, fieldNode)
+        else:
+            raise Exception("Unexpected data found in Jupyter Notebook")
 
-        cellsField = root.addFieldNode("cells")
-        cellsField.makeOrdered()
-
-        for cell in data["cells"]:
-            cellNode = cellsField.addJupyterCellNode(str(cell["cell_type"]))
-            if cell["cell_type"] == "code":
-                try:
-                    st = ''.join(cell["source"])
-                    parsedCode = parse_module(normalizeEmptyLines(st))
-                    cellNode.setParseType("code")
-                    parseCode(parsedCode, cellNode)
-                except ParserSyntaxError:
-                    cellNode.setParseType("markdown")  # type = code
-                    parseLines(cell, cellNode)
-                except Exception as e:
-                    print(e)
-
-            elif cell["cell_type"] == "markdown":
-                cellNode.setParseType("markdown")  # type = markdown
-                parseLines(cell, cellNode)
-                # metadata : dict {collapsed: False}
+    elif fileName.endswith(".json"):
+        data = json.load(f)
+        root = ep.getStartingNode()
+        parseJson(data, root)
+    else:
+        raise Exception("Trying to read file with unknown file extension (" + fileName + ")")
 
     f.close()
     print("\nPY: Finished Script")
