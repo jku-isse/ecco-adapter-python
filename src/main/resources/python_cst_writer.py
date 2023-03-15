@@ -8,7 +8,7 @@ from libcst import *
 from py4j.java_gateway import JavaGateway, GatewayParameters, CallbackServerParameters
 
 
-def parse(java_node: object) -> CSTNode:
+def parsePython(java_node: object) -> CSTNode:
     artifactBytes = java_node.getTypeArtifactBytes()
     cst_current_node = pickle.loads(artifactBytes)
 
@@ -23,7 +23,7 @@ def parse(java_node: object) -> CSTNode:
         attributes = None
         for childIdx in range(len(java_child_nodes)):
             java_child = java_child_nodes[childIdx]
-            cst_child_node = parse(java_child)
+            cst_child_node = parsePython(java_child)
 
             try:
                 if attributes is not None:
@@ -52,7 +52,7 @@ def parse(java_node: object) -> CSTNode:
     return cst_current_node.with_changes(**fields)
 
 
-def parseJson(java_node: object):
+def parseJsonOrJupyter(java_node: object):
     if java_node.isJsonObject():
         json_node = {}
 
@@ -61,7 +61,7 @@ def parseJson(java_node: object):
             java_field_node = java_field_nodes[fieldIdx]
             key = java_field_node.getJsonFieldName()
             java_value_node = java_field_node.getChildren()[0]
-            value = parseJson(java_value_node)
+            value = parseJsonOrJupyter(java_value_node)
             json_node.update({key: value})
         return json_node
 
@@ -71,7 +71,7 @@ def parseJson(java_node: object):
         java_field_nodes = java_node.getChildren()
         for fieldIdx in range(len(java_field_nodes)):
             java_value_node = java_field_nodes[fieldIdx]
-            value = parseJson(java_value_node)
+            value = parseJsonOrJupyter(java_value_node)
             json_node.append(value)
         return json_node
 
@@ -130,7 +130,7 @@ def parseJupyterCellNode(java_cell_node: object):
             if len(java_cell_node.getChildren()) != 1:
                 print("Expected 1 module node, found: " + str(len(java_cell_node.getChildren())))
             else:
-                source = parse(java_cell_node.getChildren()[0])
+                source = parsePython(java_cell_node.getChildren()[0])
 
                 return({
                     "cell_type": "code",
@@ -156,12 +156,12 @@ def write(fileName: str):
     # parse code from Java Artifact Tree
     root = ep.getRoot()
     if fileName.endswith("py"):
-        code = parse(root).code
+        code = parsePython(root).code
     elif fileName.endswith("json"):
-        json_dict = parseJson(root)
+        json_dict = parseJsonOrJupyter(root)
         code = json.dumps(json_dict, indent=4)
     elif fileName.endswith("ipynb"):
-        json_dict = parseJson(root)
+        json_dict = parseJsonOrJupyter(root)
         code = json.dumps(json_dict, indent=4)
     else:
         raise Exception("Error! Trying to create file with unknown file extension (" + fileName + ")")
@@ -178,3 +178,4 @@ if __name__ == '__main__':
         write(sys.argv[1])
     except Exception as e:
         print(e)
+        exit(1)
