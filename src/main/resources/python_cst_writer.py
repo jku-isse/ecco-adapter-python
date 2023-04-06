@@ -179,8 +179,4 @@ def write(fileName: str):
 
 
 if __name__ == '__main__':
-    try:
-        write(sys.argv[1])
-    except Exception as e:
-        print(e)
-        exit(1)
+    write(sys.argv[1])

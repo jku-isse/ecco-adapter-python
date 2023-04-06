@@ -52,7 +52,7 @@ public abstract class PY4JParser implements PythonParser {
     }
 
     protected void logOutput(Process process) throws IOException {
-        //if (LOGGER.isLoggable(Level.FINE)) {
+        if (LOGGER.isLoggable(Level.FINE)) {
             final BufferedReader parceStdRd = new BufferedReader(new InputStreamReader(process.getInputStream()));
             StringJoiner sj = new StringJoiner(System.getProperty("line.separator"));
             parceStdRd.lines().iterator().forEachRemaining(sj::add);
@@ -64,10 +64,10 @@ public abstract class PY4JParser implements PythonParser {
                 LOGGER.info(sj.toString());
                 LOGGER.info("** END - Output **");
             }
-        //}
+        }
     }
 
-    protected String getStackTrace(Process process){
+    protected String getStackTrace(Process process) {
         final BufferedReader parceErrRd = new BufferedReader(new InputStreamReader(process.getErrorStream()));
         StringJoiner sjErr = new StringJoiner(System.getProperty("line.separator"));
         parceErrRd.lines().iterator().forEachRemaining(sjErr::add);
