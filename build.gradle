@@ -3,30 +3,26 @@ plugins {
     id 'idea' // optional (to generate IntelliJ IDEA project files)
 }
 
-
-//plugins {
-//    id 'org.openjfx.javafxplugin' version '0.0.10'
-//}
-
-//javafx {
-//    version = "16"
-//    modules = [ 'javafx.controls' ]
-//}
-
-plugins {
-    id 'org.openjfx.javafxplugin' version '0.0.8'
-}
-
 dependencies {
     implementation group: 'com.fasterxml.jackson.core', name: 'jackson-databind', version: '2.14.1'
+
+    implementation project(':ecco-service')
+    if (use_py4j_parser.toBoolean()) {
+        println 'include py4j dependency'
+        implementation group: 'net.sf.py4j', name: 'py4j', version: '0.10.9.2'
+    }
+    if (use_graalvm_parser.toBoolean()) {
+        println 'include graalvm dependency'
+        implementation group: 'org.graalvm.sdk', name: 'polyglot-tck', version: '21.3.0'
+    }
+
+
+    implementation(localGroovy())
+    testImplementation(platform('org.junit:junit-bom:5.9.2'))
+    testImplementation('org.junit.jupiter:junit-jupiter')
 }
 
 ecco.adapter = true
-
-javafx {
-    version = "13.0.1"
-    modules = ['javafx.base', 'javafx.controls', 'javafx.graphics', 'javafx.swing']
-}
 
 sourceSets {
     main {
@@ -46,26 +42,11 @@ sourceSets {
     }
 }
 
-dependencies {
-    implementation project(':ecco-service')
-    if (use_py4j_parser.toBoolean()) {
-        println 'include py4j dependency'
-        implementation group: 'net.sf.py4j', name: 'py4j', version: '0.10.9.2'
-    }
-    if (use_graalvm_parser.toBoolean()) {
-        println 'include graalvm dependency'
-        implementation group: 'org.graalvm.sdk', name: 'polyglot-tck', version: '21.3.0'
-    }
-
-
-//    implementation(localGroovy())
-    testImplementation(platform('org.junit:junit-bom:5.9.1'))
-    testImplementation('org.junit.jupiter:junit-jupiter')
-}
 
 test {
     useJUnitPlatform()
-    include '**java.at.jku.isse.ecco.adapter.python/*'
+    include '**java/at.jku.isse.ecco.adapter.python/*'
+
     testLogging {
         events "passed", "skipped", "failed"
     }
