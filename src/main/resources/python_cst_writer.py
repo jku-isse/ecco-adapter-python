@@ -60,8 +60,13 @@ def parseJsonOrJupyter(java_node: object):
         for fieldIdx in range(len(java_field_nodes)):
             java_field_node = java_field_nodes[fieldIdx]
             key = java_field_node.getJsonFieldName()
-            java_value_node = java_field_node.getChildren()[0]
-            value = parseJsonOrJupyter(java_value_node)
+            java_field_node_child = java_field_node.getChildren()
+            if len(java_field_node_child) > 0:
+                java_value_node = java_field_node_child[0]
+                value = parseJsonOrJupyter(java_value_node)
+            else:  # error case i.e. in jupyter meta nodes (if files are inconsistent)
+                value = None
+
             json_node.update({key: value})
         return json_node
 
