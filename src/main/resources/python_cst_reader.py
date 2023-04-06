@@ -14,7 +14,7 @@ dumpNodes = (EmptyLine, BaseExpression)
 
 # no visiting, no dumping, saved with parent dump
 # these nodes need to be kept with their parent as identifier (i.e. Name)
-skipNodes = (ImportAlias, AssignTarget, ImportFrom, WithItem, MaybeSentinel, ExceptHandler, ExceptStarHandler, Finally)
+skipNodes = (ImportAlias, AssignTarget, ImportFrom, NameItem, WithItem, MaybeSentinel, ExceptHandler, ExceptStarHandler, Finally)
 
 
 def visit_required(node, attribute):
@@ -88,6 +88,9 @@ class CSTReader(CSTTransformer):
         if getattr(node, attribute) is None:  # ignore empty attributes
             return
 
+        if isinstance(getattr(node, attribute), (list, tuple)) and len(getattr(node, attribute)) is 0:
+            return
+
         if isinstance(getattr(node, attribute), BaseSuite):
             self.parentFieldStack.append(attribute)
             return
@@ -110,6 +113,9 @@ class CSTReader(CSTTransformer):
 
     def on_leave_attribute(self, original_node: CSTNode, attribute: str) -> None:
         if getattr(original_node, attribute) is None:  # ignore empty attributes
+            return
+
+        if isinstance(getattr(original_node, attribute), (list, tuple)) and len(getattr(original_node, attribute)) is 0:
             return
 
         if isinstance(getattr(original_node, attribute), BaseSuite):
