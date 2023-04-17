@@ -3,23 +3,24 @@ plugins {
     id 'idea' // optional (to generate IntelliJ IDEA project files)
 }
 
+apply plugin: 'java'
+
 dependencies {
     implementation group: 'com.fasterxml.jackson.core', name: 'jackson-databind', version: '2.14.1'
 
     implementation project(':ecco-service')
     if (use_py4j_parser.toBoolean()) {
-        println 'include py4j dependency'
+        println '> include py4j dependency'
         implementation group: 'net.sf.py4j', name: 'py4j', version: '0.10.9.2'
     }
     if (use_graalvm_parser.toBoolean()) {
-        println 'include graalvm dependency'
+        println '> include graalvm dependency'
         implementation group: 'org.graalvm.sdk', name: 'polyglot-tck', version: '21.3.0'
     }
 
-
-    implementation(localGroovy())
-    testImplementation(platform('org.junit:junit-bom:5.9.2'))
-    testImplementation('org.junit.jupiter:junit-jupiter')
+    //implementation(localGroovy())
+    //testImplementation 'org.junit.jupiter:junit-jupiter:5.9.2'
+    //testCompile 'org.junit.jupiter:junit-jupiter:5.9.2'
 }
 
 ecco.adapter = true
@@ -40,19 +41,29 @@ sourceSets {
             }
         }
     }
+  /*  integrationTest {
+        java {
+            compileClasspath += main.output + test.output
+            runtimeClasspath += main.output + test.output
+        }
+    }*/
 }
 
 
-test {
-    useJUnitPlatform()
-    include '**java/at.jku.isse.ecco.adapter.python/*'
+/*test {
+    //useJUnitPlatform()
+   *//* include '**java.at.jku.isse.ecco.adapter.python.AdapterTest'
 
     testLogging {
         events "passed", "skipped", "failed"
-    }
-}
+    }*//*
+}*/
 
 ospackage {
     requires('ecco-base', version, EQUAL)
     requires('ecco-service', version, EQUAL)
+}
+
+repositories {
+    mavenCentral()
 }

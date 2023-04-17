@@ -1,23 +1,27 @@
-package at.jku.isse.ecco.adapter.python;
+package at.jku.isse.ecco.adapter.python.test;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.databind.node.TextNode;
+import com.google.common.io.RecursiveDeleteOption;
 
 import java.io.BufferedReader;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
-import java.nio.file.*;
-import java.nio.file.attribute.BasicFileAttributes;
+import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
+import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
 
-public class AdapterTestUtil {
+import static com.google.common.io.MoreFiles.deleteDirectoryContents;
+
+public class PythonAdapterTestUtil {
 
     public static boolean comparePythonFiles(Path p1, Path p2) {
         try {
@@ -117,32 +121,25 @@ public class AdapterTestUtil {
         }
     }
 
-    /**
-     * delete all files / folders of a directory (excluding root-folder)
-     * source: <a href="https://howtodoinjava.com/java/io/delete-directory-recursively/">...</a>
-     */
-    public static void deleteDir(Path rootDir) {
+    public static void recreateDir(Path p) {
+        deleteDir(p);
+        createDir(p);
+    }
+
+    public static void deleteDir(Path p) {
         try {
-            Files.walkFileTree(rootDir, new SimpleFileVisitor<>() {
-                @Override
-                public FileVisitResult visitFile(Path file, BasicFileAttributes attrs)
-                        throws IOException {
-                    Files.delete(file);
-                    return FileVisitResult.CONTINUE;
-                }
+            deleteDirectoryContents(p, RecursiveDeleteOption.ALLOW_INSECURE);       //ALLOW INSECURE
+            Files.delete(p);        //Works only if the dir is already empty. (done by  deleteDirectoryContents)
+        } catch (NoSuchFileException e) {
+            // ignore
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
 
-                @Override
-                public FileVisitResult postVisitDirectory(Path dir,
-                                                          IOException exc) throws IOException {
-                    if (exc == null) {
-                        if (dir != rootDir) Files.delete(dir);
-                        return FileVisitResult.CONTINUE;
-                    } else {
-                        throw exc;
-                    }
-                }
-
-            });
+    public static void createDir(Path p) {
+        try {
+            Files.createDirectories(p);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }

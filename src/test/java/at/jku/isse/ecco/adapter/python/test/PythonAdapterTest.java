@@ -1,12 +1,12 @@
-package at.jku.isse.ecco.adapter.python;
+package at.jku.isse.ecco.adapter.python.test;
 
+import at.jku.isse.ecco.adapter.python.PythonReader;
+import at.jku.isse.ecco.adapter.python.PythonWriter;
 import at.jku.isse.ecco.storage.mem.dao.MemEntityFactory;
 import at.jku.isse.ecco.tree.Node;
-import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.MethodSource;
+import org.testng.annotations.AfterSuite;
+import org.testng.annotations.BeforeSuite;
+import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.IOException;
@@ -19,13 +19,14 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Stream;
 
-import static at.jku.isse.ecco.adapter.python.AdapterTestUtil.*;
+import static at.jku.isse.ecco.adapter.python.test.PythonAdapterTestUtil.*;
+import static org.testng.Assert.assertTrue;
 
 
-public class AdapterTest {
+public class PythonAdapterTest {
 
-    static Path readPath;
-    static Path writePath;
+    private static Path readPath;
+    private static Path writePath;
 
     final static String python = ".py";
     final static String jupyter = "ipynb";
@@ -34,46 +35,39 @@ public class AdapterTest {
     static PythonReader reader;
     static PythonWriter writer;
 
-    @BeforeAll
+    @BeforeSuite(groups = {"unit"})
     static void start() {
         reader = new PythonReader(new MemEntityFactory());
         writer = new PythonWriter();
 
         Path cwd = Paths.get("").toAbsolutePath();
 
-        readPath = cwd.resolve("src/test/resources/read/").toAbsolutePath();
-        writePath = cwd.resolve("src/test/resources/write/").toAbsolutePath();
+        readPath = cwd.resolve("src/test/resources/data/read/").toAbsolutePath();
+        writePath = cwd.resolve("src/test/resources/data/write/").toAbsolutePath();
 
         deleteDir(writePath);
     }
 
-    @AfterAll
+    @AfterSuite(groups = {"unit"})
     static void calculateMetricsForWholeTestSet() {
         reader = null;
         writer = null;
     }
 
-    @Test(groups = {"test"})
-    @ParameterizedTest
-    @MethodSource("filesPython")
+    @Test(dataProvider = "python", groups = {"python"})
     void testPython(final Path path) {
         testFiles(path);
     }
 
-    @Test(groups = {"test"})
-    @ParameterizedTest
-    @MethodSource("filesJupyter")
+    @Test(dataProvider = "jupyter", groups = {"jupyter"})
     void testJupyter(final Path path) {
         testFiles(path);
     }
 
-    @Test(groups = {"test"})
-    @ParameterizedTest
-    @MethodSource("filesJson")
+    @Test(dataProvider = "json", groups = {"json"})
     void testJson(final Path path) {
         testFiles(path);
     }
-
 
     void testFiles(final Path path) {
 
@@ -95,26 +89,29 @@ public class AdapterTest {
             System.out.println("Unknown File extension");
         }
 
-        Assertions.assertTrue(identical);
+        assertTrue(identical);
     }
 
-    public static Path[] filesPython() {
+    @DataProvider(name = "python")
+    public static Object[] filesPython() {
         return files(python);
     }
 
-    public static Path[] filesJupyter() {
+    @DataProvider(name = "jupyter")
+    public static Object[] filesJupyter() {
         return files(jupyter);
     }
 
-    public static Path[] filesJson() {
+    @DataProvider(name = "json")
+    public static Object[] filesJson() {
         return files(json);
     }
 
-    public static Path[] files(String type) {
+    public static Object[] files(String type) {
         List<Path> files;
 
         //final String[] excludedFolders = new String[]{"yolov5-master", "ass1", "ass2"};
-        final String[] excludedFolders = new String[] {};
+        final String[] excludedFolders = new String[]{};
 
         try (Stream<Path> s1 = Files.walk(readPath);
              Stream<Path> s2 = Files.walk(readPath)) {
@@ -136,7 +133,7 @@ public class AdapterTest {
             throw new RuntimeException(e);
         }
 
-        return files.toArray(new Path[0]);
+        return files.toArray(new Object[0]);
     }
 
 }
