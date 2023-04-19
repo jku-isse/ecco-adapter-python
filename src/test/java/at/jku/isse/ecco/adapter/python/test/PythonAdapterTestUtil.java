@@ -23,6 +23,17 @@ import static com.google.common.io.MoreFiles.deleteDirectoryContents;
 
 public class PythonAdapterTestUtil {
 
+    public static boolean compareFiles(Path p1, Path p2) {
+        if (p1.toString().toLowerCase().endsWith("py") && p2.toString().toLowerCase().endsWith("py")) {
+            return comparePythonFiles(p1, p2);
+        } else if (p1.toString().toLowerCase().endsWith("ipynb") && p2.toString().toLowerCase().endsWith("ipynb")) {
+            return compareJupyterFiles(p1, p2);
+        } else if (p1.toString().toLowerCase().endsWith("json") && p2.toString().toLowerCase().endsWith("json")) {
+            return compareJsonFiles(p1, p2);
+        }
+        return false; // types are not equal
+    }
+
     public static boolean comparePythonFiles(Path p1, Path p2) {
         try {
             BufferedReader reader1 = new BufferedReader(new FileReader(p1.toFile()));
