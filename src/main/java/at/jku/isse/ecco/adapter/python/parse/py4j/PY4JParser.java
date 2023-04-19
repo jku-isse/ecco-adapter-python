@@ -22,7 +22,7 @@ public abstract class PY4JParser implements PythonParser {
     protected String PARSER_SCRIPT_NAME;
     protected Gateway gateway;
 
-    private final boolean RECREATE_SCRIPTS = true; // true during development
+    private final boolean RECREATE_SCRIPTS = true; // overwrite script file in temp-folder on run > true during development
 
     @Override
     public void init() throws IOException {
