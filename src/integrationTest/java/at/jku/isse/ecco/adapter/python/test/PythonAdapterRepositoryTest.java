@@ -48,18 +48,7 @@ public class PythonAdapterRepositoryTest {
         assertTrue(pythonPluginIsLoaded(), "Python Plugin not loaded ... skipping tests...");
 
         // make commits
-        String[] commits = new String[]{
-                "C1_purpleshirt",
-                "C2_stripedshirt",
-                "C3_purpleshirt_jacket",
-                "C4_purpleshirt_jacket_glasses",
-                "C5_stripedshirt_jacket_glasses",
-                "C6_stripedshirt_glasses",
-                "C7_purpleshirt_glasses",
-                "C8_stripedshirt_jacket",
-                "C9_stripedshirt_jacket_hat"
-        };
-
+        String[] commits = getCommits(repoPath);
         for (int i = 0; i < commits.length; i++) {
             service.setBaseDir(repoPath.resolve(commits[i]));
             service.commit(commits[i]);
@@ -112,16 +101,7 @@ public class PythonAdapterRepositoryTest {
         assertTrue(pythonPluginIsLoaded(), "Python Plugin not loaded ... skipping tests...");
 
         // make commits
-        String[] commits = new String[]{
-                "C1_initial_commit",
-                "C2_new_dataset",
-                "C3_adjusted_resolution",
-                "C4_switched_to_smaller_model",
-                "C5_added_tensorboard_logging",
-                "C6_new_hyperparameter_set",
-                "C7_removed_email_notification",
-        };
-
+        String[] commits = getCommits(repoPath);
         for (int i = 0; i < commits.length; i++) {
             service.setBaseDir(repoPath.resolve(commits[i]));
             service.commit(commits[i]);
@@ -151,6 +131,51 @@ public class PythonAdapterRepositoryTest {
 
     }
 
+    @Test(groups = {"integration"})
+    public void populatePommermanTests() {
+
+        Path repoPath = prepareRepoPath("pommerman");
+
+        Path p = repoPath.resolve(".ecco");
+        Assert.assertFalse(Files.exists(p));
+
+        service.setRepositoryDir(p);
+        service.init();
+
+        assertTrue(pythonPluginIsLoaded(), "Python Plugin not loaded ... skipping tests...");
+
+        // make commits
+        String[] commits = getCommits(repoPath);
+        for (int i = 0; i < commits.length; i++) {
+            service.setBaseDir(repoPath.resolve(commits[i]));
+            service.commit(commits[i]);
+
+            System.out.printf("Commit %d successful\n", i + 1);
+        }
+
+        // extensional correctness - reproduce commits
+        checkExtensionalCorrectness(repoPath, commits, "ipynb");
+//
+//        // checkout valid variants
+//        String[] invalidCheckouts = new String[]{
+//                "train.1, resolution.1",
+//                "dataset.2, export.1, log.1"
+//        };
+//
+//        checkoutInvalidVariants(repoPath, invalidCheckouts);
+//
+//        // checkout valid variants
+//        String[] validCheckouts = new String[]{
+//                "train.1, resolution.1, parameters.1, weights.1, dataset.1, export.1, notify.1, log.1",
+//                "train.1, resolution.2, parameters.2, weights.2, dataset.2, export.1",
+//                "train.1, resolution.2, parameters.2, weights.2, dataset.1, export.1, log.1, notify.1",
+//        };
+//
+//        checkoutValidVariants(repoPath, validCheckouts);
+
+    }
+
+
     public List<Path> getRelativePaths(Path folder, String ending) {
         try (Stream<Path> paths = Files.walk(folder)) {
             return paths
@@ -162,6 +187,20 @@ public class PythonAdapterRepositoryTest {
             // process exception
         }
         return null;
+    }
+
+    private String[] getCommits(Path repoPath){
+        try (Stream<Path> paths = Files.walk(repoPath,1)) {
+            return paths
+                    .filter(Files::isDirectory)
+                    .filter(f -> f.getFileName().toString().startsWith("C"))
+                    .map(f->f.getFileName().toString())
+                    .toList()
+                    .toArray(new String[0]);
+        } catch (IOException e) {
+            // process exception
+        }
+        return new String[0];
     }
 
     private void checkoutValidVariants(Path repoPath, String[] variants) {
