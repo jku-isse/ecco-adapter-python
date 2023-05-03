@@ -21,8 +21,8 @@ public class IntegrationTestUtil {
     public static final String PATH_INTENSIONAL_VALID = "intensional_correctness_valid";
     public static final String PATH_INTENSIONAL_INVALID = "intensional_correctness_invalid";
 
-    public static void createCSV(Path p, List<String[]> measures) {
-        File csvOutputFile = new File(p.toAbsolutePath() + "\\times.csv");
+    public static void createCSV(Path p, List<String[]> measures, String fileName) {
+        File csvOutputFile = new File(p.toAbsolutePath() + "\\" + fileName + ".csv");
         try (PrintWriter pw = new PrintWriter(csvOutputFile)) {
             measures.stream()
                     .map(IntegrationTestUtil::convertToCSV)
@@ -46,7 +46,19 @@ public class IntegrationTestUtil {
         return escapedData;
     }
 
-    public static List<Path> getRelativePaths(Path folder, String ending) {
+    public static List<Path> getAbsoluteFilePaths(Path folder, String ending) {
+        try (Stream<Path> paths = Files.walk(folder)) {
+            return paths
+                    .filter(Files::isRegularFile)
+                    .filter(f -> f.getFileName().toString().endsWith(ending))
+                    .toList();
+        } catch (IOException e) {
+            // process exception
+            return null;
+        }
+    }
+
+    public static List<Path> getRelativeFilePaths(Path folder, String ending) {
         try (Stream<Path> paths = Files.walk(folder)) {
             return paths
                     .filter(Files::isRegularFile)
@@ -55,7 +67,24 @@ public class IntegrationTestUtil {
                     .toList();
         } catch (IOException e) {
             // process exception
+            return null;
         }
-        return null;
+    }
+
+   /**
+    *   get folder-names of commits (starting with "C*")
+    */
+    public static String[] getCommits(Path path) {
+        try (Stream<Path> paths = Files.walk(path, 1)) {
+            return paths
+                    .filter(Files::isDirectory)
+                    .filter(f -> f.getFileName().toString().startsWith("C"))
+                    .map(f -> f.getFileName().toString())
+                    .toList()
+                    .toArray(new String[0]);
+        } catch (IOException e) {
+            // process exception
+        }
+        return new String[0];
     }
 }

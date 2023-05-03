@@ -8,13 +8,11 @@ import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.BeforeTest;
 import org.testng.annotations.Test;
 
-import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
-import java.util.stream.Stream;
 
 import static at.jku.isse.ecco.adapter.python.test.IntegrationTestUtil.*;
 import static at.jku.isse.ecco.adapter.python.test.PythonAdapterTestUtil.*;
@@ -23,7 +21,6 @@ import static org.testng.Assert.assertTrue;
 public class PythonAdapterRepositoryTest {
 
     private Path repoPath;
-    private StringBuilder timemeasure;
     private EccoService service;
 
     private long accumulatedCommitTime;
@@ -37,7 +34,6 @@ public class PythonAdapterRepositoryTest {
 
     @BeforeMethod(groups = {"integration"})
     public void initMeasures() {
-        timemeasure = new StringBuilder();
         measures = new ArrayList<>();
         accumulatedCommitTime = 0;
     }
@@ -45,8 +41,7 @@ public class PythonAdapterRepositoryTest {
     @AfterMethod(groups = {"integration"})
     public void closeEccoService() {
         service.close();
-        System.out.println(timemeasure);
-        IntegrationTestUtil.createCSV(repoPath, measures);
+        IntegrationTestUtil.createCSV(repoPath, measures, "times");
     }
 
 
@@ -56,7 +51,7 @@ public class PythonAdapterRepositoryTest {
         checkPathAndInitService(PATH_PYTHON);
 
         // make commits
-        String[] commits = getCommits();
+        String[] commits = getCommits(repoPath);
         makeCommits(commits);
 
         // extensional correctness - reproduce commits
@@ -96,7 +91,7 @@ public class PythonAdapterRepositoryTest {
         checkPathAndInitService(PATH_JUPYTER);
 
         // make commits
-        String[] commits = getCommits();
+        String[] commits = getCommits(repoPath);
         makeCommits(commits);
 
         // extensional correctness - reproduce commits
@@ -127,7 +122,7 @@ public class PythonAdapterRepositoryTest {
         checkPathAndInitService(PATH_POMMERMAN);
 
         // make commits
-        String[] commits = getCommits();
+        String[] commits = getCommits(repoPath);
         makeCommits(commits);
 
         // extensional correctness - reproduce commits
@@ -157,7 +152,7 @@ public class PythonAdapterRepositoryTest {
         checkPathAndInitService(PATH_POMMERMAN_FAST);
 
         // make commits
-        String[] commits = getCommits();
+        String[] commits = getCommits(repoPath);
         makeCommits(commits);
 
         // extensional correctness - reproduce commits
@@ -187,7 +182,7 @@ public class PythonAdapterRepositoryTest {
         checkPathAndInitService(PATH_PYTHON);
 
         // make commits
-        String[] commits = getCommits();
+        String[] commits = getCommits(repoPath);
         makeCommits(commits);
 
         // extensional correctness - reproduce commits
@@ -231,20 +226,6 @@ public class PythonAdapterRepositoryTest {
         assertTrue(pythonPluginIsLoaded(), "Python Plugin not loaded ... skipping tests...");
     }
 
-    private String[] getCommits() {
-        try (Stream<Path> paths = Files.walk(repoPath, 1)) {
-            return paths
-                    .filter(Files::isDirectory)
-                    .filter(f -> f.getFileName().toString().startsWith("C"))
-                    .map(f -> f.getFileName().toString())
-                    .toList()
-                    .toArray(new String[0]);
-        } catch (IOException e) {
-            // process exception
-        }
-        return new String[0];
-    }
-
     private void makeCommits(String[] commits) {
         for (int i = 0; i < commits.length; i++) {
             service.setBaseDir(repoPath.resolve(commits[i]));
@@ -256,8 +237,6 @@ public class PythonAdapterRepositoryTest {
 
             accumulatedCommitTime += timeElapsed / 1000000;
             measures.add(new String[]{String.valueOf(i+1), String.valueOf(((float) (timeElapsed / 1000000)) / 1000f), String.valueOf((float) accumulatedCommitTime / 1000f)});
-
-            timemeasure.append("C" + i + ": " + ((float) (timeElapsed / 1000000)) / 1000f + " sec. \n");
 
             System.out.printf("Commit %d successful\n", i + 1);
         }
@@ -299,7 +278,7 @@ public class PythonAdapterRepositoryTest {
             System.out.printf("Checkout of Commit %d successful\n", k);
 
             // check all files of certain type
-            List<Path> relPaths = Objects.requireNonNull(getRelativePaths(compositionPath, ending));
+            List<Path> relPaths = Objects.requireNonNull(getRelativeFilePaths(compositionPath, ending));
             for (Path relPath : relPaths) {
                 assertTrue(
                         compareFiles(compositionPath.resolve(relPath),

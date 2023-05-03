@@ -26,8 +26,8 @@ public class PommermanComparisonTest {
 
     private void compareRepositories(Path p1, Path p2) {
 
-        List<Path> relPaths1 = new ArrayList<>(Objects.requireNonNull(getRelativePaths(p1, "py")));
-        List<Path> relPaths2 = new ArrayList<>(Objects.requireNonNull(getRelativePaths(p2, "py")));
+        List<Path> relPaths1 = new ArrayList<>(Objects.requireNonNull(getRelativeFilePaths(p1, "py")));
+        List<Path> relPaths2 = new ArrayList<>(Objects.requireNonNull(getRelativeFilePaths(p2, "py")));
 
         assertEquals(relPaths1.size(), relPaths2.size());
 
