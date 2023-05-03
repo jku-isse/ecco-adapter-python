@@ -26,18 +26,21 @@ public class PY4JCSTReadParser extends PY4JParser implements PythonParser.Reader
         ReaderGateway readerGateway = (ReaderGateway) gateway;
         readerGateway.reset(path, entityFactory);
 
-        ProcessBuilder parsePython = new ProcessBuilder("python", pythonScript, path.toString());
+        /*
+         * https://docs.python.org/3/using/cmdline.html
+         *  -B prevents __pycache__ folders
+         */
+        ProcessBuilder parsePython = new ProcessBuilder("python", "-B", pythonScript, path.toString());
         Process process = null;
 
         try {
             process = parsePython.start();
             long tm = System.nanoTime();
             logOutput(process);
-
-            int exitCode = -1;
+            
             if (process.waitFor(MAX_SCRIPT_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
                 //logOutput(process);
-                exitCode = process.exitValue();
+                int exitCode = process.exitValue();
                 if (exitCode == 0) {
                     LOGGER.log(Level.INFO, "Parsing (read) successful (exit-code: {0}); created {1} nodes in {2}ms",
                             new Object[]{exitCode, readerGateway.getNodesCount(), (System.nanoTime() - tm) / 1000000});

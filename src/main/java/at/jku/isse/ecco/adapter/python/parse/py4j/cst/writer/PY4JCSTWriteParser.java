@@ -25,7 +25,11 @@ public class PY4JCSTWriteParser extends PY4JParser implements PythonParser.Write
         WriterGateway writerGateway = (WriterGateway) gateway;
         writerGateway.reset(path, root);
 
-        ProcessBuilder parsePython = new ProcessBuilder("python", pythonScript, path.toString());
+        /*
+         * https://docs.python.org/3/using/cmdline.html
+         *  -B prevents __pycache__ folders
+         */
+        ProcessBuilder parsePython = new ProcessBuilder("python", "-B", pythonScript, path.toString());
         Process process = null;
 
         try {
