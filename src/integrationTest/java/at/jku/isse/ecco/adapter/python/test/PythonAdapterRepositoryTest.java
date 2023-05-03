@@ -4,67 +4,70 @@ import at.jku.isse.ecco.core.Commit;
 import at.jku.isse.ecco.service.EccoService;
 import org.testng.Assert;
 import org.testng.annotations.AfterMethod;
+import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.BeforeTest;
 import org.testng.annotations.Test;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Stream;
 
+import static at.jku.isse.ecco.adapter.python.test.IntegrationTestUtil.*;
 import static at.jku.isse.ecco.adapter.python.test.PythonAdapterTestUtil.*;
 import static org.testng.Assert.assertTrue;
 
 public class PythonAdapterRepositoryTest {
 
+    private Path repoPath;
+    private StringBuilder timemeasure;
     private EccoService service;
+
+    private long accumulatedCommitTime;
+
+    private List<String[]> measures;
 
     @BeforeTest(groups = {"integration"})
     public void setUpEccoService() {
         service = new EccoService();
     }
 
+    @BeforeMethod(groups = {"integration"})
+    public void initMeasures() {
+        timemeasure = new StringBuilder();
+        measures = new ArrayList<>();
+        accumulatedCommitTime = 0;
+    }
+
     @AfterMethod(groups = {"integration"})
     public void closeEccoService() {
         service.close();
+        System.out.println(timemeasure);
+        IntegrationTestUtil.createCSV(repoPath, measures);
     }
 
-    private boolean pythonPluginIsLoaded() {
-        return service.getArtifactPlugins().stream().anyMatch(pl -> pl.getName().equals("PythonArtifactPlugin"));
-    }
 
     @Test(groups = {"integration"})
     public void populatePythonTests() {
 
-        Path repoPath = prepareRepoPath("python_variants");
-
-        Path p = repoPath.resolve(".ecco");
-        Assert.assertFalse(Files.exists(p));
-
-        service.setRepositoryDir(p);
-        service.init();
-
-        assertTrue(pythonPluginIsLoaded(), "Python Plugin not loaded ... skipping tests...");
+        checkPathAndInitService(PATH_PYTHON);
 
         // make commits
-        String[] commits = getCommits(repoPath);
-        for (int i = 0; i < commits.length; i++) {
-            service.setBaseDir(repoPath.resolve(commits[i]));
-            service.commit(commits[i]);
-
-            System.out.printf("Commit %d successful\n", i + 1);
-        }
+        String[] commits = getCommits();
+        makeCommits(commits);
 
         // extensional correctness - reproduce commits
-        checkExtensionalCorrectness(repoPath, commits, "py");
+        checkExtensionalCorrectness(commits, "py");
 
         // checkout valid variants
         String[] checkouts = new String[]{
                 "person.1, purpleshirt.1, glasses.1, hat.1",
         };
 
-        checkoutValidVariants(repoPath, checkouts);
+        checkoutValidVariants(checkouts);
 
         // checkout valid variants
         String[] invalidCheckouts = new String[]{
@@ -76,7 +79,7 @@ public class PythonAdapterRepositoryTest {
                 "hat.1"
         };
 
-        checkoutInvalidVariants(repoPath, invalidCheckouts);
+        checkoutInvalidVariants(invalidCheckouts);
     }
 
     private Path prepareRepoPath(String folder) {
@@ -88,29 +91,16 @@ public class PythonAdapterRepositoryTest {
     }
 
     @Test(groups = {"integration"})
-    public void populateJupyterTests() {
+    public void jupyterTests() {
 
-        Path repoPath = prepareRepoPath("jupyter_variants");
-
-        Path p = repoPath.resolve(".ecco");
-        Assert.assertFalse(Files.exists(p));
-
-        service.setRepositoryDir(p);
-        service.init();
-
-        assertTrue(pythonPluginIsLoaded(), "Python Plugin not loaded ... skipping tests...");
+        checkPathAndInitService(PATH_JUPYTER);
 
         // make commits
-        String[] commits = getCommits(repoPath);
-        for (int i = 0; i < commits.length; i++) {
-            service.setBaseDir(repoPath.resolve(commits[i]));
-            service.commit(commits[i]);
-
-            System.out.printf("Commit %d successful\n", i + 1);
-        }
+        String[] commits = getCommits();
+        makeCommits(commits);
 
         // extensional correctness - reproduce commits
-        checkExtensionalCorrectness(repoPath, commits, "ipynb");
+        checkExtensionalCorrectness(commits, "ipynb");
 
         // checkout valid variants
         String[] invalidCheckouts = new String[]{
@@ -118,7 +108,7 @@ public class PythonAdapterRepositoryTest {
                 "dataset.2, export.1, log.1"
         };
 
-        checkoutInvalidVariants(repoPath, invalidCheckouts);
+        checkoutInvalidVariants(invalidCheckouts);
 
         // checkout valid variants
         String[] validCheckouts = new String[]{
@@ -127,15 +117,111 @@ public class PythonAdapterRepositoryTest {
                 "train.1, resolution.2, parameters.2, weights.2, dataset.1, export.1, log.1, notify.1",
         };
 
-        checkoutValidVariants(repoPath, validCheckouts);
+        checkoutValidVariants(validCheckouts);
 
     }
 
+    @Test(groups = {"integration"}) //, enabled=false
+    public void pommermanTests() {
+
+        checkPathAndInitService(PATH_POMMERMAN);
+
+        // make commits
+        String[] commits = getCommits();
+        makeCommits(commits);
+
+        // extensional correctness - reproduce commits
+        checkExtensionalCorrectness(commits, "ipynb");
+
+        // checkout valid variants
+        String[] invalidCheckouts = new String[]{
+                "framework.2, learning.4, dqnmodel.1, simplevslearning.1", // invalid algo-model combination
+                "framework.1, heuristic.8, ppomodel.2, simplevsheuristic.1", // invalid algo-model combination
+        };
+
+        checkoutInvalidVariants(invalidCheckouts);
+
+        // checkout valid variants
+        String[] validCheckouts = new String[]{
+                "framework.2, learning.3, dqnmodel.2, ppomodel.1, simplevslearning.1",
+                "framework.2, heuristic.10,	simplevsheuristic.1,",
+        };
+
+        checkoutValidVariants(validCheckouts);
+
+    }
+
+    @Test(groups = {"integration"}) //, enabled=false
+    public void pommermanPerformanceTests() {
+
+        checkPathAndInitService(PATH_POMMERMAN_FAST);
+
+        // make commits
+        String[] commits = getCommits();
+        makeCommits(commits);
+
+        // extensional correctness - reproduce commits
+        checkExtensionalCorrectness(commits, "ipynb");
+        recreateCommitsWithRedundancies(repoPath); // to check for equality with original
+
+        // checkout valid variants
+        String[] invalidCheckouts = new String[]{
+                "framework.2, redundant.1, learning.4, dqnmodel.1, simplevsheuristic.1", // invalid algo-model combination
+                "framework.1, redundant.1, heuristic.8, ppomodel.2, simplevslearning.1", // invalid algo-model combination
+        };
+
+        checkoutInvalidVariants(invalidCheckouts);
+
+        // checkout valid variants
+        String[] validCheckouts = new String[]{
+                "framework.2, redundant.1, learning.3, dqnmodel.2, simplevslearning.1",
+                "framework.2, redundant.1, learning.4, ppomodel.2, simplevslearning.1",
+        };
+
+        checkoutValidVariants(validCheckouts);
+    }
+
     @Test(groups = {"integration"})
-    public void populatePommermanTests() {
+    public void imageVariantsPythonTests() {
 
-        Path repoPath = prepareRepoPath("pommerman");
+        checkPathAndInitService(PATH_PYTHON);
 
+        // make commits
+        String[] commits = getCommits();
+        makeCommits(commits);
+
+        // extensional correctness - reproduce commits
+        checkExtensionalCorrectness(commits, "py");
+
+        // checkout valid variants
+        String[] invalidCheckouts = new String[]{
+                "person.1",
+                "purpleshirt.1",
+                "glasses.1",
+                "hat.1",
+                "stripedshirt.1",
+                "jacket.1"
+        };
+
+        checkoutInvalidVariants(invalidCheckouts);
+
+        // checkout valid variants
+        String[] validCheckouts = new String[]{
+                "person.1, purpleshirt.1, glasses.1, hat.1",
+                "person.1, purpleshirt.1, glasses.1"
+        };
+
+        checkoutValidVariants(validCheckouts);
+    }
+
+    // Helper Methods ----------------------------------------------------------------------------------------
+    private boolean pythonPluginIsLoaded() {
+        return service.getArtifactPlugins().stream().anyMatch(pl -> pl.getName().equals("PythonArtifactPlugin"));
+    }
+
+    private void checkPathAndInitService(String repository) {
+
+        repoPath = prepareRepoPath(repository);
         Path p = repoPath.resolve(".ecco");
         Assert.assertFalse(Files.exists(p));
 
@@ -143,58 +229,14 @@ public class PythonAdapterRepositoryTest {
         service.init();
 
         assertTrue(pythonPluginIsLoaded(), "Python Plugin not loaded ... skipping tests...");
-
-        // make commits
-        String[] commits = getCommits(repoPath);
-        for (int i = 0; i < commits.length; i++) {
-            service.setBaseDir(repoPath.resolve(commits[i]));
-            service.commit(commits[i]);
-
-            System.out.printf("Commit %d successful\n", i + 1);
-        }
-
-        // extensional correctness - reproduce commits
-        checkExtensionalCorrectness(repoPath, commits, "ipynb");
-//
-//        // checkout valid variants
-//        String[] invalidCheckouts = new String[]{
-//                "train.1, resolution.1",
-//                "dataset.2, export.1, log.1"
-//        };
-//
-//        checkoutInvalidVariants(repoPath, invalidCheckouts);
-//
-//        // checkout valid variants
-//        String[] validCheckouts = new String[]{
-//                "train.1, resolution.1, parameters.1, weights.1, dataset.1, export.1, notify.1, log.1",
-//                "train.1, resolution.2, parameters.2, weights.2, dataset.2, export.1",
-//                "train.1, resolution.2, parameters.2, weights.2, dataset.1, export.1, log.1, notify.1",
-//        };
-//
-//        checkoutValidVariants(repoPath, validCheckouts);
-
     }
 
-
-    public List<Path> getRelativePaths(Path folder, String ending) {
-        try (Stream<Path> paths = Files.walk(folder)) {
-            return paths
-                    .filter(Files::isRegularFile)
-                    .filter(f -> f.getFileName().toString().endsWith(ending))
-                    .map(folder::relativize)
-                    .toList();
-        } catch (IOException e) {
-            // process exception
-        }
-        return null;
-    }
-
-    private String[] getCommits(Path repoPath){
-        try (Stream<Path> paths = Files.walk(repoPath,1)) {
+    private String[] getCommits() {
+        try (Stream<Path> paths = Files.walk(repoPath, 1)) {
             return paths
                     .filter(Files::isDirectory)
                     .filter(f -> f.getFileName().toString().startsWith("C"))
-                    .map(f->f.getFileName().toString())
+                    .map(f -> f.getFileName().toString())
                     .toList()
                     .toArray(new String[0]);
         } catch (IOException e) {
@@ -203,34 +245,52 @@ public class PythonAdapterRepositoryTest {
         return new String[0];
     }
 
-    private void checkoutValidVariants(Path repoPath, String[] variants) {
-        checkoutVariants(repoPath.resolve("intensional_correctness_valid"), variants, "VV");
+    private void makeCommits(String[] commits) {
+        for (int i = 0; i < commits.length; i++) {
+            service.setBaseDir(repoPath.resolve(commits[i]));
+
+            long startCommit = System.nanoTime();
+            service.commit(commits[i]);
+            long finishCommit = System.nanoTime();
+            long timeElapsed = finishCommit - startCommit;
+
+            accumulatedCommitTime += timeElapsed / 1000000;
+            measures.add(new String[]{String.valueOf(i+1), String.valueOf(((float) (timeElapsed / 1000000)) / 1000f), String.valueOf((float) accumulatedCommitTime / 1000f)});
+
+            timemeasure.append("C" + i + ": " + ((float) (timeElapsed / 1000000)) / 1000f + " sec. \n");
+
+            System.out.printf("Commit %d successful\n", i + 1);
+        }
     }
 
-    private void checkoutInvalidVariants(Path repoPath, String[] variants) {
-        checkoutVariants(repoPath.resolve("intensional_correctness_invalid"), variants, "IV");
+    private void checkoutValidVariants(String[] validVariants) {
+        checkoutVariants(repoPath.resolve(PATH_INTENSIONAL_VALID), validVariants, "VV");
+    }
+
+    private void checkoutInvalidVariants(String[] invalidVariants) {
+        checkoutVariants(repoPath.resolve(PATH_INTENSIONAL_INVALID), invalidVariants, "IV");
     }
 
     private void checkoutVariants(Path repoPath, String[] variants, String shortcut) {
-        for (int i = 0; i < variants.length; i++) {
-            String name = shortcut + i + "_" + variants[i].replaceAll("[.][0-9]+", "").replaceAll(", ", "_");
+        for (int i = 1; i <= variants.length; i++) {
+            String name = shortcut + i + "_" + variants[i - 1].replaceAll("[.][0-9]+", "").replaceAll(", ", "_");
             Path compositionPath = repoPath.resolve(name);
 
             recreateDir(compositionPath);
 
             service.setBaseDir(compositionPath);
-            service.checkout(variants[i]);
+            service.checkout(variants[i - 1]);
 
-            System.out.printf("Valid Checkout %d successful\n", i + 1);
+            System.out.printf("Checkout " + shortcut + i + " successful\n");
         }
     }
 
-    private void checkExtensionalCorrectness(Path repoPath, String[] commits, String ending) {
+    private void checkExtensionalCorrectness(String[] commits, String ending) {
         int k = 1;
         for (Commit c : service.getCommits()) {
             System.out.println(c.getConfiguration().toString());
 
-            Path compositionPath = repoPath.resolve("extensional_correctness_check/Commit" + k);
+            Path compositionPath = repoPath.resolve(PATH_EXTENSIONAL + "/Commit" + k);
 
             recreateDir(compositionPath);
 
@@ -238,12 +298,33 @@ public class PythonAdapterRepositoryTest {
             service.checkout(c.getConfiguration().toString());
             System.out.printf("Checkout of Commit %d successful\n", k);
 
-            // check all jupyter-files
-            List<Path> relPaths = getRelativePaths(compositionPath, ending);
+            // check all files of certain type
+            List<Path> relPaths = Objects.requireNonNull(getRelativePaths(compositionPath, ending));
             for (Path relPath : relPaths) {
                 assertTrue(
-                        compareFiles(compositionPath.resolve(relPath), repoPath.resolve(commits[k - 1]).resolve(relPath)), "Commit " + k + " intentional Correctness test failed for " + relPath);
+                        compareFiles(compositionPath.resolve(relPath),
+                                repoPath.resolve(commits[k - 1]).resolve(relPath)),
+                        "Commit " + k + " extensional correctness test failed for " + relPath);
             }
+            k++;
+        }
+    }
+
+    private void recreateCommitsWithRedundancies(Path repoPath) {
+        int k = 1;
+        for (Commit c : service.getCommits()) {
+            Path compositionPath = repoPath.resolve(PATH_EXTENSIONAL + "_red/Commit" + k);
+
+            recreateDir(compositionPath);
+
+            service.setBaseDir(compositionPath);
+            String config = c.getConfiguration().toString();
+            if (!config.contains("redundant.1"))
+                config += ", redundant.1";
+
+            System.out.println(config);
+            service.checkout(config);
+            System.out.printf("Checkout of Commit %d successful\n", k);
             k++;
         }
     }
