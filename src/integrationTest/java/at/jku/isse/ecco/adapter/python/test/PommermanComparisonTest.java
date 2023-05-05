@@ -14,6 +14,11 @@ import static org.testng.Assert.assertTrue;
 
 public class PommermanComparisonTest {
 
+    /**
+     * compare PATH_POMMERMAN and PATH_POMMERMAN_FAST repository
+     * make sure both extensional checkouts (incl. redundant.1 for PATH_POMMERMAN_FAST) are equal
+     * run only after PythonAdapterRepositoryTest has finished successfully
+     */
     @Test(groups = {"compare"})
     public void comparePommermanCheckoutsTest() {
 
