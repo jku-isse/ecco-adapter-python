@@ -21,7 +21,6 @@ public class PY4JCSTReadParser extends PY4JParser implements PythonParser.Reader
 
     @Override
     public Node.Op parse(Path path, EntityFactory entityFactory) {
-        LOGGER.setLevel(Level.ALL); // TODO remove
         LOGGER.log(Level.INFO, "start parsing {0}", path);
         ReaderGateway readerGateway = (ReaderGateway) gateway;
         readerGateway.reset(path, entityFactory);
@@ -42,8 +41,9 @@ public class PY4JCSTReadParser extends PY4JParser implements PythonParser.Reader
                 //logOutput(process);
                 int exitCode = process.exitValue();
                 if (exitCode == 0) {
-                    LOGGER.log(Level.INFO, "Parsing (read) successful (exit-code: {0}); created {1} nodes in {2}ms",
-                            new Object[]{exitCode, readerGateway.getNodesCount(), (System.nanoTime() - tm) / 1000000});
+                    LOGGER.log(Level.INFO, "Parsing (read) successful (exit-code: 0); created {0} nodes in {1}ms",
+                            new Object[]{readerGateway.getNodesCount(),
+                                    String.valueOf((System.nanoTime() - tm) / 1000000)});
                     return readerGateway.getRoot();
                 } else {
                     LOGGER.severe("Parce exited with code " + exitCode + ":\n" + getStackTrace(process));
