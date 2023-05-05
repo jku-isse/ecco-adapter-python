@@ -1,5 +1,6 @@
 package at.jku.isse.ecco.adapter.python.test;
 
+import at.jku.isse.ecco.adapter.python.PythonPlugin;
 import at.jku.isse.ecco.core.Commit;
 import at.jku.isse.ecco.service.EccoService;
 import org.testng.Assert;
@@ -13,6 +14,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.logging.Logger;
 
 import static at.jku.isse.ecco.adapter.python.test.IntegrationTestUtil.*;
 import static at.jku.isse.ecco.adapter.python.test.PythonAdapterTestUtil.*;
@@ -23,6 +25,8 @@ public class PythonAdapterRepositoryTest {
     private Path repoPath;
     private EccoService service;
 
+    private Logger logger;
+
     private long accumulatedCommitTime;
 
     private List<String[]> measures;
@@ -30,11 +34,13 @@ public class PythonAdapterRepositoryTest {
     @BeforeTest(groups = {"integration"})
     public void setUpEccoService() {
         service = new EccoService();
+        logger = Logger.getLogger(PythonPlugin.class.getName());
     }
 
     @BeforeMethod(groups = {"integration"})
     public void initMeasures() {
         measures = new ArrayList<>();
+        measures.add(new String[]{"commit", "commitTime", "accumulatedCommitTime"});
         accumulatedCommitTime = 0;
     }
 
@@ -42,11 +48,13 @@ public class PythonAdapterRepositoryTest {
     public void closeEccoService() {
         service.close();
         IntegrationTestUtil.createCSV(repoPath, measures, "times");
+        finishLogging();
+        parseLog(repoPath);
     }
 
 
     @Test(groups = {"integration"})
-    public void populatePythonTests() {
+    public void pythonTests() {
 
         checkPathAndInitService(PATH_PYTHON);
 
@@ -75,14 +83,6 @@ public class PythonAdapterRepositoryTest {
         };
 
         checkoutInvalidVariants(invalidCheckouts);
-    }
-
-    private Path prepareRepoPath(String folder) {
-        Path cwd = Path.of(System.getProperty("user.dir"));
-        Path repoPath = cwd.resolve("src/integrationTest/resources/data").resolve(folder);
-        Path p = repoPath.resolve(".ecco");
-        deleteDir(p);
-        return repoPath;
     }
 
     @Test(groups = {"integration"})
@@ -138,8 +138,9 @@ public class PythonAdapterRepositoryTest {
 
         // checkout valid variants
         String[] validCheckouts = new String[]{
-                "framework.2, learning.3, dqnmodel.2, ppomodel.1, simplevslearning.1",
-                "framework.2, heuristic.10,	simplevsheuristic.1,",
+                "framework.2, learning.3, dqnmodel.2, simplevslearning.1",
+                "framework.2, learning.4, ppomodel.2, simplevslearning.1",
+                "framework.2, heuristic.10, simplevsheuristic.1",
         };
 
         checkoutValidVariants(validCheckouts);
@@ -171,6 +172,7 @@ public class PythonAdapterRepositoryTest {
         String[] validCheckouts = new String[]{
                 "framework.2, redundant.1, learning.3, dqnmodel.2, simplevslearning.1",
                 "framework.2, redundant.1, learning.4, ppomodel.2, simplevslearning.1",
+                "framework.2, redundant.1, heuristic.10, simplevsheuristic.1",
         };
 
         checkoutValidVariants(validCheckouts);
@@ -216,14 +218,16 @@ public class PythonAdapterRepositoryTest {
 
     private void checkPathAndInitService(String repository) {
 
-        repoPath = prepareRepoPath(repository);
+        Path cwd = Path.of(System.getProperty("user.dir"));
+        repoPath = cwd.resolve("src/integrationTest/resources/data").resolve(repository);
         Path p = repoPath.resolve(".ecco");
+        deleteDir(p);
         Assert.assertFalse(Files.exists(p));
-
         service.setRepositoryDir(p);
         service.init();
 
         assertTrue(pythonPluginIsLoaded(), "Python Plugin not loaded ... skipping tests...");
+        enableLoggingToFile(repoPath);
     }
 
     private void makeCommits(String[] commits) {
@@ -236,9 +240,9 @@ public class PythonAdapterRepositoryTest {
             long timeElapsed = finishCommit - startCommit;
 
             accumulatedCommitTime += timeElapsed / 1000000;
-            measures.add(new String[]{String.valueOf(i+1), String.valueOf(((float) (timeElapsed / 1000000)) / 1000f), String.valueOf((float) accumulatedCommitTime / 1000f)});
+            measures.add(new String[]{String.valueOf(i + 1), String.valueOf(((float) (timeElapsed / 1000000)) / 1000f), String.valueOf((float) accumulatedCommitTime / 1000f)});
 
-            System.out.printf("Commit %d successful\n", i + 1);
+            logger.info("Commit " + (i + 1) + " successful");
         }
     }
 
@@ -260,7 +264,7 @@ public class PythonAdapterRepositoryTest {
             service.setBaseDir(compositionPath);
             service.checkout(variants[i - 1]);
 
-            System.out.printf("Checkout " + shortcut + i + " successful\n");
+            logger.info("Checkout " + shortcut + i + " successful");
         }
     }
 
@@ -275,7 +279,7 @@ public class PythonAdapterRepositoryTest {
 
             service.setBaseDir(compositionPath);
             service.checkout(c.getConfiguration().toString());
-            System.out.printf("Checkout of Commit %d successful\n", k);
+            logger.info("Checkout of Commit  " + k + " successful");
 
             // check all files of certain type
             List<Path> relPaths = Objects.requireNonNull(getRelativeFilePaths(compositionPath, ending));

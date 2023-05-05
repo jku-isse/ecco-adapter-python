@@ -1,15 +1,22 @@
 package at.jku.isse.ecco.adapter.python.test;
 
-import java.io.File;
-import java.io.IOException;
-import java.io.PrintWriter;
+import at.jku.isse.ecco.adapter.python.PythonPlugin;
+
+import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.List;
+import java.util.logging.FileHandler;
+import java.util.logging.Logger;
+import java.util.logging.SimpleFormatter;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public class IntegrationTestUtil {
+
+    public static final Path REPOSITORY_ROOT =  Path.of(System.getProperty("user.dir")).resolve("src/integrationTest/resources/data");
     // repository paths
     public static final String PATH_POMMERMAN = "pommerman";
     public static final String PATH_POMMERMAN_FAST = "pommerman_small";
@@ -71,9 +78,9 @@ public class IntegrationTestUtil {
         }
     }
 
-   /**
-    *   get folder-names of commits (starting with "C*")
-    */
+    /**
+     * get folder-names of commits (starting with "C*")
+     */
     public static String[] getCommits(Path path) {
         try (Stream<Path> paths = Files.walk(path, 1)) {
             return paths
@@ -86,5 +93,78 @@ public class IntegrationTestUtil {
             // process exception
         }
         return new String[0];
+    }
+
+    static FileHandler fh = null;
+
+    public static void enableLoggingToFile(Path repoPath) {
+        Logger logger = Logger.getLogger(PythonPlugin.class.getName());
+        //FileHandler fh;
+        try {
+            // This block configure the logger with handler and formatter
+            fh = new FileHandler(repoPath.toAbsolutePath() + "\\logging.log");
+            logger.addHandler(fh);
+            SimpleFormatter formatter = new SimpleFormatter();
+            fh.setFormatter(formatter);
+        } catch (SecurityException | IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public static void finishLogging() {
+        Logger logger = Logger.getLogger(PythonPlugin.class.getName());
+        logger.removeHandler(fh);
+    }
+
+    public static void parseLog(Path repoPath) {
+
+        try (BufferedReader reader = new BufferedReader(new FileReader(repoPath.toAbsolutePath() + "\\logging.log"))) {
+            List<Integer> times = new LinkedList<>();
+            List<String[]> commits = new ArrayList<>();
+            List<String[]> checkouts = new ArrayList<>();
+            commits.add(new String[]{"Commit", "nFiles", "totalTime", "avgTime"});
+            checkouts.add(new String[]{"Checkout", "nFiles", "totalTime", "avgTime"});
+
+            int commit = 1, checkout = 1;
+            for (String line = reader.readLine(); line != null; line = reader.readLine()) {
+                if (line.contains("created")) {
+                    String time = line.split("nodes in ")[1].split("ms")[0].replaceAll("\\s", "");
+                    times.add(Integer.parseInt(time));
+                } else if (line.startsWith("INFO: Commit")) { // commit done
+                    int sum = 0;
+                    for (int t : times) {
+                        sum += t;
+                    }
+                    float avg = (float) sum / times.size();
+                    commits.add(new String[]{
+                            String.valueOf(commit++),
+                            String.valueOf(times.size()),
+                            String.valueOf(sum),
+                            String.valueOf(Math.round(avg))});
+
+                    times.clear();
+                } else if (line.contains("wrote")) {
+                    String time = line.split("file in ")[1].split("ms")[0].replace(" ", "");
+                    times.add(Integer.parseInt(time));
+                } else if (line.contains("INFO: Checkout of Commit")) { // checkout (extensional) done
+                    int sum = 0;
+                    for (int t : times) {
+                        sum += t;
+                    }
+                    float avg = (float) sum / times.size();
+                    checkouts.add(new String[]{
+                            String.valueOf(checkout++),
+                            String.valueOf(times.size()),
+                            String.valueOf(sum),
+                            String.valueOf(Math.round(avg))});
+
+                    times.clear();
+                }
+            }
+            createCSV(repoPath, commits, "commits");
+            createCSV(repoPath, checkouts, "checkouts");
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 }
