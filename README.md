@@ -1,7 +1,7 @@
 
 # ECCO Python Adapter
 
-tested with python 3.9
+tested with python 3.9.13
 
 ### requirements and installation:
 

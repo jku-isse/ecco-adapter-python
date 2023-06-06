@@ -5,10 +5,10 @@ import at.jku.isse.ecco.adapter.python.PythonPlugin;
 import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.logging.FileHandler;
+import java.util.logging.Handler;
 import java.util.logging.Logger;
 import java.util.logging.SimpleFormatter;
 import java.util.stream.Collectors;
@@ -16,7 +16,7 @@ import java.util.stream.Stream;
 
 public class IntegrationTestUtil {
 
-    public static final Path REPOSITORY_ROOT =  Path.of(System.getProperty("user.dir")).resolve("src/integrationTest/resources/data");
+    public static final Path REPOSITORY_ROOT = Path.of(System.getProperty("user.dir")).resolve("src/integrationTest/resources/data");
     // repository paths
     public static final String PATH_POMMERMAN = "pommerman";
     public static final String PATH_POMMERMAN_FAST = "pommerman_small";
@@ -27,6 +27,12 @@ public class IntegrationTestUtil {
     public static final String PATH_EXTENSIONAL = "extensional_correctness_check";
     public static final String PATH_INTENSIONAL_VALID = "intensional_correctness_valid";
     public static final String PATH_INTENSIONAL_INVALID = "intensional_correctness_invalid";
+
+    public static final String EXT_PYTHON = ".py";
+    public static final String EXT_JUPYTER = ".ipynb";
+    public static final String EXT_JSON = ".json";
+
+    private static final String LOG_FILE = "logging.log";
 
     public static void createCSV(Path p, List<String[]> measures, String fileName) {
         File csvOutputFile = new File(p.toAbsolutePath() + "\\" + fileName + ".csv");
@@ -80,6 +86,7 @@ public class IntegrationTestUtil {
 
     /**
      * get folder-names of commits (starting with "C*")
+     * used to tell ECCO where the commit-folders are
      */
     public static String[] getCommits(Path path) {
         try (Stream<Path> paths = Files.walk(path, 1)) {
@@ -95,14 +102,12 @@ public class IntegrationTestUtil {
         return new String[0];
     }
 
-    static FileHandler fh = null;
-
     public static void enableLoggingToFile(Path repoPath) {
         Logger logger = Logger.getLogger(PythonPlugin.class.getName());
-        //FileHandler fh;
+        FileHandler fh;
         try {
             // This block configure the logger with handler and formatter
-            fh = new FileHandler(repoPath.toAbsolutePath() + "\\logging.log");
+            fh = new FileHandler(repoPath.resolve(LOG_FILE).toAbsolutePath().toString());
             logger.addHandler(fh);
             SimpleFormatter formatter = new SimpleFormatter();
             fh.setFormatter(formatter);
@@ -111,19 +116,28 @@ public class IntegrationTestUtil {
         }
     }
 
-    public static void finishLogging() {
+    public static void finishLogging(Path repoPath, PythonAdapterIntegrationTestLogger log) {
         Logger logger = Logger.getLogger(PythonPlugin.class.getName());
-        logger.removeHandler(fh);
+
+        for (Handler h : logger.getHandlers()) {
+            logger.removeHandler(h);
+            h.close();
+        }
+
+        parseLog(repoPath, log);
+
+        String name = repoPath.getParent().relativize(repoPath).toString();
+        log.createCSV(repoPath, name);
     }
 
-    public static void parseLog(Path repoPath) {
+    public static void parseLog(Path repoPath, PythonAdapterIntegrationTestLogger log) {
 
-        try (BufferedReader reader = new BufferedReader(new FileReader(repoPath.toAbsolutePath() + "\\logging.log"))) {
+        try (BufferedReader reader = new BufferedReader(new FileReader(repoPath.resolve(LOG_FILE).toAbsolutePath().toString()))) {
             List<Integer> times = new LinkedList<>();
-            List<String[]> commits = new ArrayList<>();
-            List<String[]> checkouts = new ArrayList<>();
-            commits.add(new String[]{"Commit", "nFiles", "totalTime", "avgTime"});
-            checkouts.add(new String[]{"Checkout", "nFiles", "totalTime", "avgTime"});
+            float timeParsing = 0.0f, timeTraversing = 0.0f, timeReading = 0.0f, timeFinishing = 0.0f, timeScriptInside = 0.0f;
+
+            log.add(0, "nCommitFiles", "commitTotalScriptTimeOutside", "commitTotalScriptTimeInside", "commitAvgScriptTime", "commitScriptParsing", "commitScriptTraversing", "commitScriptReading", "commitScriptFinishing");
+            log.add(0, "nCheckoutFiles", "checkoutTotalScriptTime", "checkoutAvgScriptTime", "checkoutScriptParsing", "checkoutScriptTraversing");
 
             int commit = 1, checkout = 1;
             for (String line = reader.readLine(); line != null; line = reader.readLine()) {
@@ -136,12 +150,22 @@ public class IntegrationTestUtil {
                         sum += t;
                     }
                     float avg = (float) sum / times.size();
-                    commits.add(new String[]{
-                            String.valueOf(commit++),
+                    log.add(commit++,
                             String.valueOf(times.size()),
-                            String.valueOf(sum),
-                            String.valueOf(Math.round(avg))});
+                            String.valueOf((float) sum / 1000),
+                            String.valueOf(Math.round(timeScriptInside) / 1000),
+                            String.valueOf((float) Math.round(avg) / 1000),
+                            String.valueOf(Math.round(timeParsing) / 1000),
+                            String.valueOf(Math.round(timeTraversing) / 1000),
+                            String.valueOf(Math.round(timeReading) / 1000),
+                            String.valueOf(Math.round(timeFinishing) / 1000)
+                    );
 
+                    timeParsing = 0.0f;
+                    timeTraversing = 0.0f;
+                    timeReading = 0.0f;
+                    timeFinishing = 0.0f;
+                    timeScriptInside = 0.0f;
                     times.clear();
                 } else if (line.contains("wrote")) {
                     String time = line.split("file in ")[1].split("ms")[0].replace(" ", "");
@@ -152,19 +176,93 @@ public class IntegrationTestUtil {
                         sum += t;
                     }
                     float avg = (float) sum / times.size();
-                    checkouts.add(new String[]{
-                            String.valueOf(checkout++),
+                    log.add(checkout++,
                             String.valueOf(times.size()),
-                            String.valueOf(sum),
-                            String.valueOf(Math.round(avg))});
+                            String.valueOf((float) sum / 1000),
+                            String.valueOf((float) Math.round(avg) / 1000),
+                            String.valueOf(Math.round(timeParsing) / 1000),
+                            String.valueOf(Math.round(timeTraversing) / 1000)
+                    );
 
+                    timeParsing = 0.0f;
+                    timeTraversing = 0.0f;
                     times.clear();
+                } else if (line.contains("Time for parsing:")) {
+                    String time = line.substring("Time for parsing: ".length()).split("ms")[0];
+                    timeParsing += Float.parseFloat(time);
+                } else if (line.contains("Time for traversing:")) {
+                    String time = line.substring("Time for traversing: ".length()).split("ms")[0];
+                    timeTraversing += Float.parseFloat(time);
+                } else if (line.contains("Time for reading:")) {
+                    String time = line.substring("Time for reading: ".length()).split("ms")[0];
+                    timeReading += Float.parseFloat(time);
+                } else if (line.contains("Time for finishing:")) {
+                    String time = line.substring("Time for finishing: ".length()).split("ms")[0];
+                    timeFinishing += Float.parseFloat(time);
+                } else if (line.contains("Time for script:")) {
+                    String time = line.substring("Time for script: ".length()).split("ms")[0];
+                    timeScriptInside += Float.parseFloat(time);
                 }
             }
-            createCSV(repoPath, commits, "commits");
-            createCSV(repoPath, checkouts, "checkouts");
+            reader.close();
+            Files.deleteIfExists(repoPath.resolve(LOG_FILE).toAbsolutePath());
         } catch (IOException e) {
             e.printStackTrace();
         }
+    }
+
+    public static void logPythonDetails(Path repoPath, PythonAdapterIntegrationTestLogger log) {
+        String[] commits = getCommits(repoPath);
+
+        log.add(0, "msg", "nFiles", "nLines");
+
+        for (int i = 0; i < commits.length; i++) {
+
+            Path commitPath = repoPath.resolve(commits[i]);
+
+            List<Path> files = getAbsoluteFilePaths(commitPath, EXT_PYTHON);
+            assert files != null;
+
+            // count lines (not LOC, because we also parse comments, etc... )
+            long lines = 0;
+            for (Path p : files) {
+                lines += countLines(p.toFile());
+            }
+
+            String msg = commits[i].substring(commits[i].indexOf("_") + 1).replaceAll("_", " ");
+            log.add(i + 1,
+                    msg,
+                    String.valueOf(files.size()),
+                    String.valueOf(lines));
+        }
+    }
+
+    public static void logJuypterDetails(Path repoPath, PythonAdapterIntegrationTestLogger log) {
+        String[] commits = getCommits(repoPath);
+
+        log.add(0, "msg");
+
+        for (int i = 0; i < commits.length; i++) {
+            Path commitPath = repoPath.resolve(commits[i]);
+
+            List<Path> files = getAbsoluteFilePaths(commitPath, EXT_PYTHON);
+            assert files != null;
+
+            String msg = commits[i].substring(commits[i].indexOf("_") + 1).replaceAll("_", " ");
+            log.add(i + 1,
+                    msg);
+        }
+    }
+
+    public static long countLines(File fileName) {
+        long lines = 0;
+        try (BufferedReader reader = new BufferedReader(new FileReader(fileName))) {
+            for (String line = reader.readLine(); line != null; line = reader.readLine()) {
+                lines++;
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return lines;
     }
 }

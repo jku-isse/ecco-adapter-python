@@ -1,11 +1,11 @@
-import ast
 import json
 import pickle
 import sys
 
-import libcst as cst
 from libcst import *
 from py4j.java_gateway import JavaGateway, GatewayParameters, CallbackServerParameters
+
+from timeit import default_timer as timer
 
 
 def parsePython(java_node: object) -> CSTNode:
@@ -97,7 +97,6 @@ def parseJsonOrJupyter(java_node: object):
 
 
 def parseJupyterCellNode(java_cell_node: object):
-
     if java_cell_node.getCellType() == "markdown":
         lines = java_cell_node.getChildren()
         source = []
@@ -105,7 +104,7 @@ def parseJupyterCellNode(java_cell_node: object):
             line_node = lines[lineIdx]
             source.append(line_node.getLine())
 
-        return({
+        return ({
             "cell_type": java_cell_node.getCellType(),
             "source": source,
             "metadata": {
@@ -122,7 +121,7 @@ def parseJupyterCellNode(java_cell_node: object):
                 line_node = lines[lineIdx]
                 source.append(line_node.getLine())
 
-            return({
+            return ({
                 "cell_type": java_cell_node.getCellType(),
                 "execution_count": None,
                 "outputs": [],
@@ -137,7 +136,7 @@ def parseJupyterCellNode(java_cell_node: object):
             else:
                 source = parsePython(java_cell_node.getChildren()[0])
 
-                return({
+                return ({
                     "cell_type": "code",
                     "execution_count": None,
                     "outputs": [],
@@ -161,7 +160,15 @@ def write(fileName: str):
     # parse code from Java Artifact Tree
     root = ep.getRoot()
     if fileName.endswith("py"):
-        code = parsePython(root).code
+        start = timer()
+        parsed = parsePython(root)
+        end = timer()
+        print("Time for traversing: %4.3fms" % ((end - start) * 1000))
+
+        start = timer()
+        code = parsed.code
+        end = timer()
+        print("Time for parsing: %4.3fms" % ((end - start) * 1000))
     elif fileName.endswith("json"):
         json_dict = parseJsonOrJupyter(root)
         code = json.dumps(json_dict, indent=4)
@@ -171,9 +178,12 @@ def write(fileName: str):
     else:
         raise Exception("Error! Trying to create file with unknown file extension (" + fileName + ")")
 
+    start = timer()
     f = open(fileName, "w", -1, "UTF-8")  # open file
     f.write(code)
     f.close()  # close file
+    end = timer()
+    print("Time for writing: %4.3fms" % ((end - start) * 1000))
 
     print("\nPY: Finished Script")
 

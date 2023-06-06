@@ -4,17 +4,19 @@ import pickle
 import sys
 from typing import Optional, Tuple, List, Sequence, Union
 
-import libcst
-import libcst as cst
 from libcst import *
 from py4j.java_gateway import JavaGateway
 
+from timeit import default_timer as timer
+
 # no visiting, but dumped entirely
 dumpNodes = (EmptyLine, BaseExpression)
+# dumpNodes = ()
 
 # no visiting, no dumping, saved with parent dump
 # these nodes need to be kept with their parent as identifier (i.e. Name)
-skipNodes = (ImportAlias, AssignTarget, ImportFrom, NameItem, WithItem, MaybeSentinel, ExceptHandler, ExceptStarHandler, Finally)
+skipNodes = (
+ImportAlias, AssignTarget, ImportFrom, NameItem, WithItem, MaybeSentinel, ExceptHandler, ExceptStarHandler, Finally)
 
 
 def visit_required(node, attribute):
@@ -88,7 +90,7 @@ class CSTReader(CSTTransformer):
         if getattr(node, attribute) is None:  # ignore empty attributes
             return
 
-        if isinstance(getattr(node, attribute), (list, tuple)) and len(getattr(node, attribute)) is 0:
+        if isinstance(getattr(node, attribute), (list, tuple)) and len(getattr(node, attribute)) == 0:
             return
 
         if isinstance(getattr(node, attribute), BaseSuite):
@@ -115,7 +117,7 @@ class CSTReader(CSTTransformer):
         if getattr(original_node, attribute) is None:  # ignore empty attributes
             return
 
-        if isinstance(getattr(original_node, attribute), (list, tuple)) and len(getattr(original_node, attribute)) is 0:
+        if isinstance(getattr(original_node, attribute), (list, tuple)) and len(getattr(original_node, attribute)) == 0:
             return
 
         if isinstance(getattr(original_node, attribute), BaseSuite):
@@ -146,7 +148,6 @@ def parseJupyterCellLines(cell, parentNode):
 
 
 def parseJson(cell, parentNode):
-
     if isinstance(cell, dict):
         objectNode = parentNode.addJsonObjectNode()
         for key, value in cell.items():
@@ -173,7 +174,6 @@ def parseJson(cell, parentNode):
 
 
 def parseJupyterCellArray(cellArray, parentNode):
-
     if isinstance(cellArray, list):
         arrayNode = parentNode.addJsonArrayNode()
         for cell in cellArray:
@@ -199,6 +199,7 @@ def parseJupyterCellArray(cellArray, parentNode):
 
 
 def read(fileName: str):
+    start = timer()
     print(f"\nPY: Starting Script for {fileName}")
 
     # access java gateway and entry point
@@ -209,9 +210,20 @@ def read(fileName: str):
 
     if fileName.endswith(".py"):
         data = normalizeEmptyLines(f.read())
+        end = timer()
+        print("Time for reading: %4.3fms" % ((end - start) * 1000))
         # parse code
+
+        start = timer()
         code = parse_module(data)
+        end = timer()
+        print("Time for parsing: %4.3fms" % ((end - start) * 1000))
+
+        start = timer()
         code.visit(CSTReader(ep.getStartingNode()))
+        end = timer()
+        print("Time for traversing: %4.3fms" % ((end - start) * 1000))
+
     elif fileName.endswith(".ipynb"):
         data = json.load(f)
 
@@ -233,12 +245,19 @@ def read(fileName: str):
     else:
         raise Exception("Trying to read file with unknown file extension (" + fileName + ")")
 
+    start = timer()
     f.close()
     print("\nPY: Finished Script")
+    end = timer()
+    print("Time for finishing: %4.3fms" % ((end - start) * 1000))
 
 
 if __name__ == '__main__':
+    start = timer()
     try:
         read(sys.argv[1])
     except Exception as e:
         print(e)
+        exit(1)
+    end = timer()
+    print("Time for script: %4.3fms" % ((end - start) * 1000))

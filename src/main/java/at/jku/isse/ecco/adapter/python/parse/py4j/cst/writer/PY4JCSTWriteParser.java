@@ -33,8 +33,8 @@ public class PY4JCSTWriteParser extends PY4JParser implements PythonParser.Write
         Process process = null;
 
         try {
-            process = parsePython.start();
             long tm = System.nanoTime();
+            process = parsePython.start();
             logOutput(process);
 
             int exitCode = -1;

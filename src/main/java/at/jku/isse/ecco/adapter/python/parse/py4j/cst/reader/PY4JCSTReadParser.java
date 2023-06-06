@@ -33,8 +33,8 @@ public class PY4JCSTReadParser extends PY4JParser implements PythonParser.Reader
         Process process = null;
 
         try {
-            process = parsePython.start();
             long tm = System.nanoTime();
+            process = parsePython.start();
             logOutput(process);
             
             if (process.waitFor(MAX_SCRIPT_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {

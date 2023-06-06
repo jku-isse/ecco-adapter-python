@@ -11,9 +11,7 @@ import org.testng.annotations.Test;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 import java.util.logging.Logger;
 
 import static at.jku.isse.ecco.adapter.python.test.IntegrationTestUtil.*;
@@ -24,46 +22,47 @@ public class PythonAdapterRepositoryTest {
 
     private Path repoPath;
     private EccoService service;
-
     private Logger logger;
+    private PythonAdapterIntegrationTestLogger log;
 
-    private long accumulatedCommitTime;
-
-    private List<String[]> measures;
+    private void warmupJava(){
+        service = new EccoService();
+        checkPathInitService(PATH_POMMERMAN);
+        String commit = getCommits(repoPath)[0]; // make 1st commit of Pommerman (26 files)
+        service.setBaseDir(repoPath.resolve(commit));
+        service.commit(commit);
+        service.close();
+    }
 
     @BeforeTest(groups = {"integration"})
     public void setUpEccoService() {
+        warmupJava();
         service = new EccoService();
         logger = Logger.getLogger(PythonPlugin.class.getName());
     }
 
     @BeforeMethod(groups = {"integration"})
     public void initMeasures() {
-        measures = new ArrayList<>();
-        measures.add(new String[]{"commit", "commitTime", "accumulatedCommitTime"});
-        accumulatedCommitTime = 0;
+        log = new PythonAdapterIntegrationTestLogger();
     }
 
     @AfterMethod(groups = {"integration"})
     public void closeEccoService() {
         service.close();
-        IntegrationTestUtil.createCSV(repoPath, measures, "times");
-        finishLogging();
-        parseLog(repoPath);
+        finishLogging(repoPath, log);
     }
-
 
     @Test(groups = {"integration"})
     public void pythonTests() {
 
-        checkPathAndInitService(PATH_PYTHON);
+        preparePathAndEnableLogging(PATH_PYTHON);
 
         // make commits
         String[] commits = getCommits(repoPath);
         makeCommits(commits);
 
         // extensional correctness - reproduce commits
-        checkExtensionalCorrectness(commits, "py");
+        checkExtensionalCorrectness(commits, EXT_PYTHON);
 
         // checkout valid variants
         String[] checkouts = new String[]{
@@ -83,19 +82,21 @@ public class PythonAdapterRepositoryTest {
         };
 
         checkoutInvalidVariants(invalidCheckouts);
+
+        logPythonDetails(repoPath, log);
     }
 
     @Test(groups = {"integration"})
     public void jupyterTests() {
 
-        checkPathAndInitService(PATH_JUPYTER);
+        preparePathAndEnableLogging(PATH_JUPYTER);
 
         // make commits
         String[] commits = getCommits(repoPath);
         makeCommits(commits);
 
         // extensional correctness - reproduce commits
-        checkExtensionalCorrectness(commits, "ipynb");
+        checkExtensionalCorrectness(commits, EXT_JUPYTER);
 
         // checkout valid variants
         String[] invalidCheckouts = new String[]{
@@ -113,20 +114,20 @@ public class PythonAdapterRepositoryTest {
         };
 
         checkoutValidVariants(validCheckouts);
-
+        logJuypterDetails(repoPath, log);
     }
 
     @Test(groups = {"integration"}) //, enabled=false
     public void pommermanTests() {
 
-        checkPathAndInitService(PATH_POMMERMAN);
+        preparePathAndEnableLogging(PATH_POMMERMAN);
 
         // make commits
         String[] commits = getCommits(repoPath);
         makeCommits(commits);
 
         // extensional correctness - reproduce commits
-        checkExtensionalCorrectness(commits, "ipynb");
+        checkExtensionalCorrectness(commits, EXT_PYTHON);
 
         // checkout valid variants
         String[] invalidCheckouts = new String[]{
@@ -144,20 +145,20 @@ public class PythonAdapterRepositoryTest {
         };
 
         checkoutValidVariants(validCheckouts);
-
+        logPythonDetails(repoPath, log);
     }
 
     @Test(groups = {"integration"}) //, enabled=false
     public void pommermanPerformanceTests() {
 
-        checkPathAndInitService(PATH_POMMERMAN_FAST);
+        preparePathAndEnableLogging(PATH_POMMERMAN_FAST);
 
         // make commits
         String[] commits = getCommits(repoPath);
         makeCommits(commits);
 
         // extensional correctness - reproduce commits
-        checkExtensionalCorrectness(commits, "ipynb");
+        checkExtensionalCorrectness(commits, EXT_PYTHON);
         recreateCommitsWithRedundancies(repoPath); // to check for equality with original
 
         // checkout valid variants
@@ -176,19 +177,20 @@ public class PythonAdapterRepositoryTest {
         };
 
         checkoutValidVariants(validCheckouts);
+        logPythonDetails(repoPath, log);
     }
 
     @Test(groups = {"integration"})
     public void imageVariantsPythonTests() {
 
-        checkPathAndInitService(PATH_PYTHON);
+        preparePathAndEnableLogging(PATH_PYTHON);
 
         // make commits
         String[] commits = getCommits(repoPath);
         makeCommits(commits);
 
         // extensional correctness - reproduce commits
-        checkExtensionalCorrectness(commits, "py");
+        checkExtensionalCorrectness(commits, EXT_PYTHON);
 
         // checkout valid variants
         String[] invalidCheckouts = new String[]{
@@ -216,8 +218,8 @@ public class PythonAdapterRepositoryTest {
         return service.getArtifactPlugins().stream().anyMatch(pl -> pl.getName().equals("PythonArtifactPlugin"));
     }
 
-    private void checkPathAndInitService(String repository) {
 
+    private void checkPathInitService(String repository) {
         Path cwd = Path.of(System.getProperty("user.dir"));
         repoPath = cwd.resolve("src/integrationTest/resources/data").resolve(repository);
         Path p = repoPath.resolve(".ecco");
@@ -227,20 +229,29 @@ public class PythonAdapterRepositoryTest {
         service.init();
 
         assertTrue(pythonPluginIsLoaded(), "Python Plugin not loaded ... skipping tests...");
+    }
+
+    private void preparePathAndEnableLogging(String repository) {
+        checkPathInitService(repository);
         enableLoggingToFile(repoPath);
     }
 
     private void makeCommits(String[] commits) {
+        long accumulatedTime = 0;
+        log.add(0, "Config","commitECCOTime", "accumulatedCommitECCOTime");
         for (int i = 0; i < commits.length; i++) {
-            service.setBaseDir(repoPath.resolve(commits[i]));
+            Path commitPath = repoPath.resolve(commits[i]);
+            service.setBaseDir(commitPath);
+            String configString = service.getConfigStringFromFile(commitPath);
 
-            long startCommit = System.nanoTime();
-            service.commit(commits[i]);
-            long finishCommit = System.nanoTime();
-            long timeElapsed = finishCommit - startCommit;
+            String finalCommit = commits[i];
+            long timeElapsed = measureTime(() ->  service.commit(finalCommit));
 
-            accumulatedCommitTime += timeElapsed / 1000000;
-            measures.add(new String[]{String.valueOf(i + 1), String.valueOf(((float) (timeElapsed / 1000000)) / 1000f), String.valueOf((float) accumulatedCommitTime / 1000f)});
+            accumulatedTime += timeElapsed / 1000000;
+            log.add(i + 1,
+                    configString,
+                    String.valueOf(((float) (timeElapsed / 1000000)) / 1000f),
+                    String.valueOf((float) accumulatedTime / 1000f));
 
             logger.info("Commit " + (i + 1) + " successful");
         }
@@ -269,6 +280,8 @@ public class PythonAdapterRepositoryTest {
     }
 
     private void checkExtensionalCorrectness(String[] commits, String ending) {
+        log.add(0, "CheckoutECCOTime", "accumulatedCheckoutECCOTime");
+        long accumulatedTime = 0;
         int k = 1;
         for (Commit c : service.getCommits()) {
             System.out.println(c.getConfiguration().toString());
@@ -278,7 +291,14 @@ public class PythonAdapterRepositoryTest {
             recreateDir(compositionPath);
 
             service.setBaseDir(compositionPath);
-            service.checkout(c.getConfiguration().toString());
+            String config = c.getConfiguration().toString();
+
+            long timeElapsed = measureTime(() -> service.checkout(config));
+            accumulatedTime += timeElapsed / 1000000;
+            log.add(k,
+                    String.valueOf(((float) (timeElapsed / 1000000)) / 1000f),
+                    String.valueOf((float) accumulatedTime / 1000f));
+
             logger.info("Checkout of Commit  " + k + " successful");
 
             // check all files of certain type
@@ -293,8 +313,17 @@ public class PythonAdapterRepositoryTest {
         }
     }
 
+    private long measureTime(Runnable runnable) {
+        long startCheckout = System.nanoTime();
+        runnable.run();
+        long finishCheckout = System.nanoTime();
+        return finishCheckout - startCheckout;
+    }
+
     private void recreateCommitsWithRedundancies(Path repoPath) {
+        log.add(0, "redCheckoutECCOTime", "accumulatedRedCheckoutECCOTime", "redConfig");
         int k = 1;
+        long accumulatedTime = 0;
         for (Commit c : service.getCommits()) {
             Path compositionPath = repoPath.resolve(PATH_EXTENSIONAL + "_red/Commit" + k);
 
@@ -306,8 +335,17 @@ public class PythonAdapterRepositoryTest {
                 config += ", redundant.1";
 
             System.out.println(config);
-            service.checkout(config);
-            System.out.printf("Checkout of Commit %d successful\n", k);
+
+            String finalConfig = config;
+            long timeElapsed = measureTime(() -> service.checkout(finalConfig));
+
+            accumulatedTime += timeElapsed / 1000000;
+            log.add(k,
+                    String.valueOf(((float) (timeElapsed / 1000000)) / 1000f),
+                    String.valueOf((float) accumulatedTime / 1000f),
+                    config);
+
+            System.out.printf("Checkout of Commit %d (with redundancy) successful\n", k);
             k++;
         }
     }
