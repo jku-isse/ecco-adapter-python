@@ -69,6 +69,24 @@ public class PythonAdapterTest {
         testFiles(path);
     }
 
+    @Test(groups = {"python"}, enabled = false)
+    void testSingleFile() {
+        reader = new PythonReader(new MemEntityFactory());
+        writer = new PythonWriter();
+
+        Path cwd = Paths.get("").toAbsolutePath();
+        readPath = cwd.resolve("src/test/resources/data/read/").toAbsolutePath();
+        writePath = cwd.resolve("src/test/resources/data/write/").toAbsolutePath();
+        recreateDir(writePath);
+
+        Path path = readPath.resolve("testExcept.py");
+        testFiles(path);
+        path = readPath.resolve("testExcept2.py");
+        testFiles(path);
+        path = readPath.resolve("testExcept3.py");
+        testFiles(path);
+    }
+
     void testFiles(final Path path) {
 
         Set<Node.Op> readNodes = reader.read(readPath, new Path[]{path});

@@ -16,7 +16,7 @@ dumpNodes = (EmptyLine, BaseExpression)
 # no visiting, no dumping, saved with parent dump
 # these nodes need to be kept with their parent as identifier (i.e. Name)
 skipNodes = (
-ImportAlias, AssignTarget, ImportFrom, NameItem, WithItem, MaybeSentinel, ExceptHandler, ExceptStarHandler, Finally)
+    ImportAlias, AssignTarget, ImportFrom, NameItem, WithItem, MaybeSentinel)
 
 
 def visit_required(node, attribute):
@@ -61,6 +61,24 @@ class CSTReader(CSTTransformer):
 
     def on_leave(self, original_node: CSTNodeT, updated_node: CSTNodeT) -> Union[
         CSTNodeT, RemovalSentinel, FlattenSentinel[CSTNodeT]]:
+
+        if isinstance(original_node, (Try, TryStar)):
+            # replace handlers with dummy-handler, because they couldn't be removed yet due to libcst-validation
+            if len(original_node.handlers) > 0:
+                handler = ExceptHandler(body=IndentedBlock([])) if \
+                    isinstance(original_node, Try) else ExceptStarHandler(body=IndentedBlock([]))
+                updated_node = updated_node.with_changes(handlers=[handler], finalbody=None)
+            else:
+                updated_node = updated_node.with_changes(handlers=(), finalbody=Finally(body=IndentedBlock([])))
+
+        if isinstance(original_node, (ExceptHandler, ExceptStarHandler, Finally)):
+            # create artifact, but do not remove (last one can not be removed because of validity)
+            # removing happens in parent node (Try, TryStar)
+            self.currentNode.setBytes(pickle.dumps(updated_node))
+            self.currentNode = self.stack.pop()
+            # return original node, because field 'type' in updated_node has been removed while visiting
+            # can cause CSTValidationError("The bare except: handler must be the last one.") otherwise
+            return original_node
 
         if isinstance(original_node, BaseSuite):
             # can not remove, but further visiting needed (keep node with parent, add attributes with parent-field info)
