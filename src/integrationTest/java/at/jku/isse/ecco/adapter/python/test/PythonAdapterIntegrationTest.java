@@ -18,7 +18,7 @@ import static at.jku.isse.ecco.adapter.python.test.IntegrationTestUtil.*;
 import static at.jku.isse.ecco.adapter.python.test.PythonAdapterTestUtil.*;
 import static org.testng.Assert.assertTrue;
 
-public class PythonAdapterRepositoryTest {
+public class PythonAdapterIntegrationTest {
 
     private Path repoPath;
     private EccoService service;

@@ -35,20 +35,18 @@ public class PY4JCSTWriteParser extends PY4JParser implements PythonParser.Write
         try {
             long tm = System.nanoTime();
             process = parsePython.start();
-            logOutput(process);
 
-            int exitCode = -1;
             if (process.waitFor(MAX_SCRIPT_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
-                exitCode = process.exitValue();
+                int exitCode = process.exitValue();
+                if (exitCode == 0) {
+                    LOGGER.log(Level.INFO, "Parsing (write) successful (exit-code: 0); wrote 1 file in {0}ms",
+                            new Object[]{String.valueOf((System.nanoTime() - tm) / 1000000)});
+                } else {
+                    LOGGER.severe("Parce exited with code " + exitCode + "!");
+                }
+
             } else {
                 LOGGER.severe("parsing process timed out after " + MAX_SCRIPT_TIMEOUT_SECONDS + " seconds");
-            }
-
-            if (exitCode == 0) {
-                LOGGER.log(Level.INFO, "Parsing (write) successful (exit-code: 0); wrote 1 file in {0}ms",
-                        new Object[]{String.valueOf((System.nanoTime() - tm) / 1000000)});
-            } else {
-                LOGGER.severe("Parce exited with code " + exitCode + ":\n" + getStackTrace(process));
             }
 
         } catch (IOException | InterruptedException e) {

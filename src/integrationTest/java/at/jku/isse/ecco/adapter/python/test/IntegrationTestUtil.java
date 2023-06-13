@@ -7,6 +7,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Locale;
 import java.util.logging.FileHandler;
 import java.util.logging.Handler;
 import java.util.logging.Logger;
@@ -134,10 +135,12 @@ public class IntegrationTestUtil {
 
         try (BufferedReader reader = new BufferedReader(new FileReader(repoPath.resolve(LOG_FILE).toAbsolutePath().toString()))) {
             List<Integer> times = new LinkedList<>();
-            float timeParsing = 0.0f, timeTraversing = 0.0f, timeReading = 0.0f, timeFinishing = 0.0f, timeScriptInside = 0.0f;
+            float timeParsing = 0.0f, timeTraversing = 0.0f, timeReading = 0.0f, timeScriptInside = 0.0f;
 
-            log.add(0, "nCommitFiles", "commitTotalScriptTimeOutside", "commitTotalScriptTimeInside", "commitAvgScriptTime", "commitScriptParsing", "commitScriptTraversing", "commitScriptReading", "commitScriptFinishing");
+            log.add(0, "nCommitFiles", "commitTotalScriptTimeOutside", "commitTotalScriptTimeInside", "commitAvgScriptTime", "commitScriptParsing", "commitScriptTraversing", "commitScriptReading");
             log.add(0, "nCheckoutFiles", "checkoutTotalScriptTime", "checkoutAvgScriptTime", "checkoutScriptParsing", "checkoutScriptTraversing");
+
+            String matcher = ".*?\\((.*)ms.*"; // replaces everything outside (23.232ms) including brackets and 'ms'
 
             int commit = 1, checkout = 1;
             for (String line = reader.readLine(); line != null; line = reader.readLine()) {
@@ -152,22 +155,20 @@ public class IntegrationTestUtil {
                     float avg = (float) sum / times.size();
                     log.add(commit++,
                             String.valueOf(times.size()),
-                            String.valueOf((float) sum / 1000),
-                            String.valueOf(Math.round(timeScriptInside) / 1000),
-                            String.valueOf((float) Math.round(avg) / 1000),
-                            String.valueOf(Math.round(timeParsing) / 1000),
-                            String.valueOf(Math.round(timeTraversing) / 1000),
-                            String.valueOf(Math.round(timeReading) / 1000),
-                            String.valueOf(Math.round(timeFinishing) / 1000)
+                            format((float) sum),
+                            format(timeScriptInside),
+                            format(avg),
+                            format(timeParsing),
+                            format(timeTraversing),
+                            format(timeReading)
                     );
 
                     timeParsing = 0.0f;
                     timeTraversing = 0.0f;
                     timeReading = 0.0f;
-                    timeFinishing = 0.0f;
                     timeScriptInside = 0.0f;
                     times.clear();
-                } else if (line.contains("wrote")) {
+                } else if (line.contains("Parsing (write) successful (exit-code: 0); wrote")) {
                     String time = line.split("file in ")[1].split("ms")[0].replace(" ", "");
                     times.add(Integer.parseInt(time));
                 } else if (line.contains("INFO: Checkout of Commit")) { // checkout (extensional) done
@@ -178,29 +179,26 @@ public class IntegrationTestUtil {
                     float avg = (float) sum / times.size();
                     log.add(checkout++,
                             String.valueOf(times.size()),
-                            String.valueOf((float) sum / 1000),
-                            String.valueOf((float) Math.round(avg) / 1000),
-                            String.valueOf(Math.round(timeParsing) / 1000),
-                            String.valueOf(Math.round(timeTraversing) / 1000)
+                            format((float) sum),
+                            format(avg),
+                            format(timeParsing),
+                            format(timeTraversing)
                     );
 
                     timeParsing = 0.0f;
                     timeTraversing = 0.0f;
                     times.clear();
-                } else if (line.contains("Time for parsing:")) {
-                    String time = line.substring("Time for parsing: ".length()).split("ms")[0];
+                } else if (line.contains("Successfully parsed to")) {
+                    String time = line.replaceFirst(matcher, "$1");
                     timeParsing += Float.parseFloat(time);
-                } else if (line.contains("Time for traversing:")) {
-                    String time = line.substring("Time for traversing: ".length()).split("ms")[0];
+                } else if (line.contains("Successfully traversed and parsed")) {
+                    String time = line.replaceFirst(matcher, "$1");
                     timeTraversing += Float.parseFloat(time);
-                } else if (line.contains("Time for reading:")) {
-                    String time = line.substring("Time for reading: ".length()).split("ms")[0];
+                } else if (line.contains("Successfully read file")) {
+                    String time = line.replaceFirst(matcher, "$1");
                     timeReading += Float.parseFloat(time);
-                } else if (line.contains("Time for finishing:")) {
-                    String time = line.substring("Time for finishing: ".length()).split("ms")[0];
-                    timeFinishing += Float.parseFloat(time);
-                } else if (line.contains("Time for script:")) {
-                    String time = line.substring("Time for script: ".length()).split("ms")[0];
+                } else if (line.contains("Successfully finished")) {
+                    String time = line.replaceFirst(matcher, "$1");
                     timeScriptInside += Float.parseFloat(time);
                 }
             }
@@ -264,5 +262,9 @@ public class IntegrationTestUtil {
             e.printStackTrace();
         }
         return lines;
+    }
+
+    private static String format(float seconds) {
+        return String.format(Locale.US, "%.03f", seconds / 1000);
     }
 }

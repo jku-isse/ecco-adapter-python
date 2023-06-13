@@ -2,12 +2,11 @@ import inspect
 import json
 import pickle
 import sys
-from typing import Optional, Tuple, List, Sequence, Union
-
+import traceback
 from libcst import *
 from py4j.java_gateway import JavaGateway
-
 from timeit import default_timer as timer
+from typing import Union
 
 # no visiting, but dumped entirely
 dumpNodes = (EmptyLine, BaseExpression)
@@ -15,8 +14,7 @@ dumpNodes = (EmptyLine, BaseExpression)
 
 # no visiting, no dumping, saved with parent dump
 # these nodes need to be kept with their parent as identifier (i.e. Name)
-skipNodes = (
-    ImportAlias, AssignTarget, ImportFrom, NameItem, WithItem, MaybeSentinel)
+skipNodes = (ImportAlias, AssignTarget, ImportFrom, NameItem, WithItem, MaybeSentinel)
 
 
 def visit_required(node, attribute):
@@ -205,8 +203,8 @@ def parseJupyterCellArray(cellArray, parentNode):
                 except ParserSyntaxError:
                     cellNode.setParseType("markdown")
                     parseJupyterCellLines(cell, cellNode)
-                except Exception as e:
-                    print(e)
+                except Exception:
+                    logger.severe(traceback.format_exc())
 
             elif cell["cell_type"] == "markdown":
                 cellNode.setParseType("markdown")
@@ -216,33 +214,30 @@ def parseJupyterCellArray(cellArray, parentNode):
         raise Exception("Expected Jupyter Cell-Array (list), but got " + str(type(cellArray)))
 
 
-def read(fileName: str):
+def read(filename: str):
     start = timer()
-    print(f"\nPY: Starting Script for {fileName}")
+    logger.info(f"PY: Starting Reader Script for {filename}")
 
     # access java gateway and entry point
     gateway = JavaGateway()
     ep = gateway.entry_point
 
-    f = open(fileName, "r", -1, "UTF-8")  # open file
+    f = open(filename, "r", -1, "UTF-8")  # open file
 
-    if fileName.endswith(".py"):
+    if filename.endswith(".py"):
         data = normalizeEmptyLines(f.read())
-        end = timer()
-        print("Time for reading: %4.3fms" % ((end - start) * 1000))
+        logger.info(f"PY: Successfully read file (%4.3fms)" % ((timer() - start) * 1000))
         # parse code
 
         start = timer()
         code = parse_module(data)
-        end = timer()
-        print("Time for parsing: %4.3fms" % ((end - start) * 1000))
+        logger.info(f"PY: Successfully parsed to LibCST-Graph (%4.3fms)" % ((timer() - start) * 1000))
 
         start = timer()
         code.visit(CSTReader(ep.getStartingNode()))
-        end = timer()
-        print("Time for traversing: %4.3fms" % ((end - start) * 1000))
+        logger.info(f"PY: Successfully traversed and parsed to ECCO-Artifact-Graph (%4.3fms)" % ((timer() - start) * 1000))
 
-    elif fileName.endswith(".ipynb"):
+    elif filename.endswith(".ipynb"):
         data = json.load(f)
 
         if isinstance(data, dict):
@@ -256,26 +251,24 @@ def read(fileName: str):
         else:
             raise Exception("Unexpected data found in Jupyter Notebook")
 
-    elif fileName.endswith(".json"):
+    elif filename.endswith(".json"):
         data = json.load(f)
         root = ep.getStartingNode()
         parseJson(data, root)
     else:
-        raise Exception("Trying to read file with unknown file extension (" + fileName + ")")
+        raise Exception(f"Trying to read file with unknown file extension ({filename})")
 
-    start = timer()
     f.close()
-    print("\nPY: Finished Script")
-    end = timer()
-    print("Time for finishing: %4.3fms" % ((end - start) * 1000))
 
 
 if __name__ == '__main__':
-    start = timer()
+    main_start = timer()
+
+    logger = JavaGateway().entry_point.getLogger()
     try:
         read(sys.argv[1])
     except Exception as e:
-        print(e)
+        logger.severe(traceback.format_exc())
         exit(1)
-    end = timer()
-    print("Time for script: %4.3fms" % ((end - start) * 1000))
+
+    logger.info("PY: Successfully finished Reader-Script (%4.3fms total)" % ((timer() - main_start) * 1000))

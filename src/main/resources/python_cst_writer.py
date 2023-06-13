@@ -1,9 +1,10 @@
 import json
 import pickle
 import sys
+import traceback
 
 from libcst import *
-from py4j.java_gateway import JavaGateway, GatewayParameters, CallbackServerParameters
+from py4j.java_gateway import JavaGateway
 
 from timeit import default_timer as timer
 
@@ -33,10 +34,10 @@ def parsePython(java_node: object) -> CSTNode:
                         attributes = (cst_child_node,)
                     else:
                         attributes = cst_child_node
-            except Exception as e:
+            except Exception:
                 # for debugging
-                print(cst_attribute_name)
-                print(e)
+                logger.info(cst_attribute_name)
+                logger.severe(traceback.format_exc)
 
         if attributes is not None:
             if java_field_node.getParentFieldName() is not None:
@@ -132,7 +133,7 @@ def parseJupyterCellNode(java_cell_node: object):
             })
         elif java_cell_node.getParseType() == "code":
             if len(java_cell_node.getChildren()) != 1:
-                print("Expected 1 module node, found: " + str(len(java_cell_node.getChildren())))
+                raise Exception("Expected 1 module node, found: " + str(len(java_cell_node.getChildren())))
             else:
                 source = parsePython(java_cell_node.getChildren()[0])
 
@@ -146,47 +147,50 @@ def parseJupyterCellNode(java_cell_node: object):
                     }
                 })
         else:
-            print("Unknown parse type:" + str(java_cell_node.getParseType()))
+            raise Exception("Unknown parse type:" + str(java_cell_node.getParseType()))
     else:
-        print("Unknown cell type:" + str(java_cell_node.getCellType()))
+        raise Exception("Unknown cell type:" + str(java_cell_node.getCellType()))
 
 
-def write(fileName: str):
-    print(f"\nPY: Starting Writer Script for {sys.argv[1]}")
+def write(filename: str):
+    logger.info(f"PY: Starting Writer Script for {filename}")
 
     gateway = JavaGateway()
     ep = gateway.entry_point
 
     # parse code from Java Artifact Tree
     root = ep.getRoot()
-    if fileName.endswith("py"):
+    if filename.endswith("py"):
         start = timer()
         parsed = parsePython(root)
-        end = timer()
-        print("Time for traversing: %4.3fms" % ((end - start) * 1000))
+        logger.info("PY: Successfully traversed and parsed to LibCST-Graph (%4.3fms)" % ((timer() - start) * 1000))
 
         start = timer()
         code = parsed.code
-        end = timer()
-        print("Time for parsing: %4.3fms" % ((end - start) * 1000))
-    elif fileName.endswith("json"):
+        logger.info("PY: Successfully parsed to Python code (%4.3fms)" % ((timer() - start) * 1000))
+    elif filename.endswith("json"):
         json_dict = parseJsonOrJupyter(root)
         code = json.dumps(json_dict, indent=4)
-    elif fileName.endswith("ipynb"):
+    elif filename.endswith("ipynb"):
         json_dict = parseJsonOrJupyter(root)
         code = json.dumps(json_dict, indent=4)
     else:
-        raise Exception("Error! Trying to create file with unknown file extension (" + fileName + ")")
+        raise Exception(f"Error! Trying to create file with unknown file extension ({filename})")
 
     start = timer()
-    f = open(fileName, "w", -1, "UTF-8")  # open file
+    f = open(filename, "w", -1, "UTF-8")  # open file
     f.write(code)
     f.close()  # close file
-    end = timer()
-    print("Time for writing: %4.3fms" % ((end - start) * 1000))
-
-    print("\nPY: Finished Script")
+    logger.info("PY: Successfully wrote file (%4.3fms)" % ((timer() - start) * 1000))
 
 
 if __name__ == '__main__':
-    write(sys.argv[1])
+    main_start = timer()
+    logger = JavaGateway().entry_point.getLogger()
+    try:
+        write(sys.argv[1])
+    except Exception as e:
+        logger.severe(traceback.format_exc())
+        exit(1)
+
+    logger.info("PY: Successfully finished Writer-Script (%4.3fms total)" % ((timer() - main_start) * 1000))

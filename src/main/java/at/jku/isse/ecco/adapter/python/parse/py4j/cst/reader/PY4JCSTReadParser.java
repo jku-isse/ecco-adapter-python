@@ -35,10 +35,8 @@ public class PY4JCSTReadParser extends PY4JParser implements PythonParser.Reader
         try {
             long tm = System.nanoTime();
             process = parsePython.start();
-            logOutput(process);
-            
+
             if (process.waitFor(MAX_SCRIPT_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
-                //logOutput(process);
                 int exitCode = process.exitValue();
                 if (exitCode == 0) {
                     LOGGER.log(Level.INFO, "Parsing (read) successful (exit-code: 0); created {0} nodes in {1}ms",
@@ -46,7 +44,7 @@ public class PY4JCSTReadParser extends PY4JParser implements PythonParser.Reader
                                     String.valueOf((System.nanoTime() - tm) / 1000000)});
                     return readerGateway.getRoot();
                 } else {
-                    LOGGER.severe("Parce exited with code " + exitCode + ":\n" + getStackTrace(process));
+                    LOGGER.severe("Parce exited with code " + exitCode + "!");
                 }
             } else {
                 LOGGER.severe("parsing process timed out after " + MAX_SCRIPT_TIMEOUT_SECONDS + " seconds");
