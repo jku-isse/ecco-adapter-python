@@ -21,7 +21,7 @@ public class IntegrationTestUtil {
     // repository paths
     public static final String PATH_POMMERMAN = "pommerman";
     public static final String PATH_POMMERMAN_FAST = "pommerman_small";
-    public static final String PATH_PYTHON = "image_variants_python";
+    public static final String PATH_PYTHON = "python_variants";
     public static final String PATH_JUPYTER = "jupyter_variants";
 
     // relative checkout paths

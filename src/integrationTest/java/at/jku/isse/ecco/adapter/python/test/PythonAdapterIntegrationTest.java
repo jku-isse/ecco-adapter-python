@@ -30,7 +30,7 @@ public class PythonAdapterIntegrationTest {
         checkPathInitService(PATH_POMMERMAN);
         String commit = getCommits(repoPath)[0]; // make 1st commit of Pommerman (26 files)
         service.setBaseDir(repoPath.resolve(commit));
-        service.commit(commit);
+        service.commit(commit); // not printed in console
         service.close();
     }
 

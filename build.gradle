@@ -1,12 +1,17 @@
 plugins {
     id 'groovy'
     id 'idea' // optional (to generate IntelliJ IDEA project files)
+    id "org.ajoberstar.grgit" version "1.7.0"
 }
 
 apply plugin: 'java'
 
 dependencies {
+//    testImplementation 'com.palominolabs.gradle.task:gradle-git-clone-task:0.0.2'
+//    implementation 'org.ajoberstar:grgit:1.7.0'
+    //testImplementation 'org.ajoberstar:gradle-git:1.7.0'
     implementation group: 'com.fasterxml.jackson.core', name: 'jackson-databind', version: '2.14.1'
+
 
     implementation project(':ecco-service')
     if (use_py4j_parser.toBoolean()) {
@@ -43,6 +48,20 @@ ospackage {
     requires('ecco-base', version, EQUAL)
     requires('ecco-service', version, EQUAL)
 }
+
+// clone integrationTest-repository from remote
+import org.ajoberstar.grgit.*
+
+def dataPath = 'src/integrationTest/resources/data'
+
+task cloneIntegrationTestRepository {
+    doLast{
+        if(!file(dataPath).exists()){
+            Grgit.clone(dir: file(dataPath), uri: 'https://github.com/MatthiasPreuner/ecco-adapter-python-test.git')
+        }
+    }
+}
+tasks.integrationTest.dependsOn("cloneIntegrationTestRepository")
 
 repositories {
     mavenCentral()
