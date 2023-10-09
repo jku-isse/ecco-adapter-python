@@ -1,4 +1,4 @@
-package at.jku.isse.ecco.adapter.python.test;
+package at.jku.isse.ecco.adapter.python.repositoryTest;
 
 import java.io.File;
 import java.io.PrintWriter;
@@ -7,11 +7,11 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.stream.Collectors;
 
-public class PythonAdapterIntegrationTestLogger extends ArrayList<ArrayList<String>> {
+public class PythonAdapterRepositoryTestLogger extends ArrayList<ArrayList<String>> {
 
     private final ArrayList<ArrayList<String>> internal;
 
-    public PythonAdapterIntegrationTestLogger() {
+    public PythonAdapterRepositoryTestLogger() {
         internal = new ArrayList<>();
     }
 

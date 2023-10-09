@@ -1,196 +1,68 @@
-package at.jku.isse.ecco.adapter.python.test;
+package at.jku.isse.ecco.adapter.python.repositoryTest;
 
 import at.jku.isse.ecco.adapter.python.PythonPlugin;
 import at.jku.isse.ecco.core.Commit;
 import at.jku.isse.ecco.service.EccoService;
-import org.testng.Assert;
-import org.testng.annotations.AfterMethod;
-import org.testng.annotations.BeforeMethod;
-import org.testng.annotations.BeforeTest;
-import org.testng.annotations.Test;
+import org.junit.jupiter.api.*;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.*;
+import java.util.List;
+import java.util.Objects;
 import java.util.logging.Logger;
 
-import static at.jku.isse.ecco.adapter.python.test.IntegrationTestUtil.*;
+import static at.jku.isse.ecco.adapter.python.repositoryTest.PythonAdapterRepositoryTestUtil.*;
 import static at.jku.isse.ecco.adapter.python.test.PythonAdapterTestUtil.*;
-import static org.testng.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
-public class PythonAdapterIntegrationTest {
+@TestMethodOrder(MethodOrderer.OrderAnnotation.class)
+public class PythonAdapterRepositoryTest {
 
-    private Path repoPath;
-    private EccoService service;
-    private Logger logger;
-    private PythonAdapterIntegrationTestLogger log;
+    private static Path repoPath;
+    private static EccoService service;
+    private static Logger logger;
+    private PythonAdapterRepositoryTestLogger log;
 
-    private void warmupJava(){
+    private static void warmupJava() {
         service = new EccoService();
-        checkPathInitService(PATH_POMMERMAN);
-        String commit = getCommits(repoPath)[0]; // make 1st commit of Pommerman (26 files)
+        checkPathInitService(PythonAdapterRepositoryTestUtil.PATH_POMMERMAN);
+        String commit = PythonAdapterRepositoryTestUtil.getCommits(repoPath)[0]; // make 1st commit of Pommerman (26 files)
         service.setBaseDir(repoPath.resolve(commit));
         service.commit(commit); // not printed in console
         service.close();
     }
 
-    @BeforeTest(groups = {"integration"})
-    public void setUpEccoService() {
+    @BeforeAll
+    public static void setUpEccoService() {
         warmupJava();
         service = new EccoService();
         logger = Logger.getLogger(PythonPlugin.class.getName());
     }
 
-    @BeforeMethod(groups = {"integration"})
+    @BeforeEach
     public void initMeasures() {
-        log = new PythonAdapterIntegrationTestLogger();
+        log = new PythonAdapterRepositoryTestLogger();
     }
 
-    @AfterMethod(groups = {"integration"})
+    @AfterEach
     public void closeEccoService() {
         service.close();
-        finishLogging(repoPath, log);
+        PythonAdapterRepositoryTestUtil.finishLogging(repoPath, log);
     }
 
-    @Test(groups = {"integration"})
+    @Test
+    @Order(1)
     public void pythonTests() {
 
-        preparePathAndEnableLogging(PATH_PYTHON);
+        preparePathAndEnableLogging(PythonAdapterRepositoryTestUtil.PATH_PYTHON);
 
         // make commits
-        String[] commits = getCommits(repoPath);
+        String[] commits = PythonAdapterRepositoryTestUtil.getCommits(repoPath);
         makeCommits(commits);
 
         // extensional correctness - reproduce commits
-        checkExtensionalCorrectness(commits, EXT_PYTHON);
-
-        // checkout valid variants
-        String[] checkouts = new String[]{
-                "person.1, purpleshirt.1, glasses.1, hat.1",
-        };
-
-        checkoutValidVariants(checkouts);
-
-        // checkout valid variants
-        String[] invalidCheckouts = new String[]{
-                "person.1",
-                "purpleshirt.1",
-                "jacket.1",
-                "stripedshirt.1",
-                "glasses.1",
-                "hat.1"
-        };
-
-        checkoutInvalidVariants(invalidCheckouts);
-
-        logPythonDetails(repoPath, log);
-    }
-
-    @Test(groups = {"integration"})
-    public void jupyterTests() {
-
-        preparePathAndEnableLogging(PATH_JUPYTER);
-
-        // make commits
-        String[] commits = getCommits(repoPath);
-        makeCommits(commits);
-
-        // extensional correctness - reproduce commits
-        checkExtensionalCorrectness(commits, EXT_JUPYTER);
-
-        // checkout valid variants
-        String[] invalidCheckouts = new String[]{
-                "train.1, resolution.1",
-                "dataset.2, export.1, log.1"
-        };
-
-        checkoutInvalidVariants(invalidCheckouts);
-
-        // checkout valid variants
-        String[] validCheckouts = new String[]{
-                "train.1, resolution.1, parameters.1, weights.1, dataset.1, export.1, notify.1, log.1",
-                "train.1, resolution.2, parameters.2, weights.2, dataset.2, export.1",
-                "train.1, resolution.2, parameters.2, weights.2, dataset.1, export.1, log.1, notify.1",
-        };
-
-        checkoutValidVariants(validCheckouts);
-        logJuypterDetails(repoPath, log);
-    }
-
-    @Test(groups = {"integration"}) //, enabled=false
-    public void pommermanTests() {
-
-        preparePathAndEnableLogging(PATH_POMMERMAN);
-
-        // make commits
-        String[] commits = getCommits(repoPath);
-        makeCommits(commits);
-
-        // extensional correctness - reproduce commits
-        checkExtensionalCorrectness(commits, EXT_PYTHON);
-
-        // checkout valid variants
-        String[] invalidCheckouts = new String[]{
-                "framework.2, learning.4, dqnmodel.1, simplevslearning.1", // invalid algo-model combination
-                "framework.1, heuristic.8, ppomodel.2, simplevsheuristic.1", // invalid algo-model combination
-        };
-
-        checkoutInvalidVariants(invalidCheckouts);
-
-        // checkout valid variants
-        String[] validCheckouts = new String[]{
-                "framework.2, learning.3, dqnmodel.2, simplevslearning.1",
-                "framework.2, learning.4, ppomodel.2, simplevslearning.1",
-                "framework.2, heuristic.10, simplevsheuristic.1",
-        };
-
-        checkoutValidVariants(validCheckouts);
-        logPythonDetails(repoPath, log);
-    }
-
-    @Test(groups = {"integration"}) //, enabled=false
-    public void pommermanPerformanceTests() {
-
-        preparePathAndEnableLogging(PATH_POMMERMAN_FAST);
-
-        // make commits
-        String[] commits = getCommits(repoPath);
-        makeCommits(commits);
-
-        // extensional correctness - reproduce commits
-        checkExtensionalCorrectness(commits, EXT_PYTHON);
-        recreateCommitsWithRedundancies(repoPath); // to check for equality with original
-
-        // checkout valid variants
-        String[] invalidCheckouts = new String[]{
-                "framework.2, redundant.1, learning.4, dqnmodel.1, simplevsheuristic.1", // invalid algo-model combination
-                "framework.1, redundant.1, heuristic.8, ppomodel.2, simplevslearning.1", // invalid algo-model combination
-        };
-
-        checkoutInvalidVariants(invalidCheckouts);
-
-        // checkout valid variants
-        String[] validCheckouts = new String[]{
-                "framework.2, redundant.1, learning.3, dqnmodel.2, simplevslearning.1",
-                "framework.2, redundant.1, learning.4, ppomodel.2, simplevslearning.1",
-                "framework.2, redundant.1, heuristic.10, simplevsheuristic.1",
-        };
-
-        checkoutValidVariants(validCheckouts);
-        logPythonDetails(repoPath, log);
-    }
-
-    @Test(groups = {"integration"})
-    public void imageVariantsPythonTests() {
-
-        preparePathAndEnableLogging(PATH_PYTHON);
-
-        // make commits
-        String[] commits = getCommits(repoPath);
-        makeCommits(commits);
-
-        // extensional correctness - reproduce commits
-        checkExtensionalCorrectness(commits, EXT_PYTHON);
+        checkExtensionalCorrectness(commits, PythonAdapterRepositoryTestUtil.EXT_PYTHON);
 
         // checkout valid variants
         String[] invalidCheckouts = new String[]{
@@ -211,20 +83,132 @@ public class PythonAdapterIntegrationTest {
         };
 
         checkoutValidVariants(validCheckouts);
+
+        PythonAdapterRepositoryTestUtil.logPythonDetails(repoPath, log);
+    }
+
+    @Test
+    @Order(2)
+    public void jupyterTests() {
+
+        preparePathAndEnableLogging(PythonAdapterRepositoryTestUtil.PATH_JUPYTER);
+
+        // make commits
+        String[] commits = PythonAdapterRepositoryTestUtil.getCommits(repoPath);
+        makeCommits(commits);
+
+        // extensional correctness - reproduce commits
+        checkExtensionalCorrectness(commits, PythonAdapterRepositoryTestUtil.EXT_JUPYTER);
+
+        // checkout valid variants
+        String[] invalidCheckouts = new String[]{
+                "train.1, resolution.1",
+                "dataset.2, export.1, log.1"
+        };
+
+        checkoutInvalidVariants(invalidCheckouts);
+
+        // checkout valid variants
+        String[] validCheckouts = new String[]{
+                "train.1, resolution.1, parameters.1, weights.1, dataset.1, export.1, notify.1, log.1",
+                "train.1, resolution.2, parameters.2, weights.2, dataset.2, export.1",
+                "train.1, resolution.2, parameters.2, weights.2, dataset.1, export.1, log.1, notify.1",
+        };
+
+        checkoutValidVariants(validCheckouts);
+        PythonAdapterRepositoryTestUtil.logJuypterDetails(repoPath, log);
+    }
+
+    @Test
+    @Order(3)
+    public void pommermanSlowTests() {
+
+        preparePathAndEnableLogging(PythonAdapterRepositoryTestUtil.PATH_POMMERMAN);
+
+        // make commits
+        String[] commits = PythonAdapterRepositoryTestUtil.getCommits(repoPath);
+        makeCommits(commits);
+
+        // extensional correctness - reproduce commits
+        checkExtensionalCorrectness(commits, PythonAdapterRepositoryTestUtil.EXT_PYTHON);
+
+        // checkout valid variants
+        String[] invalidCheckouts = new String[]{
+                "framework.2, learning.4, dqnmodel.1, simplevslearning.1", // invalid algo-model combination
+                "framework.1, heuristic.8, ppomodel.2, simplevsheuristic.1", // invalid algo-model combination
+        };
+
+        checkoutInvalidVariants(invalidCheckouts);
+
+        // checkout valid variants
+        String[] validCheckouts = new String[]{
+                "framework.2, learning.3, dqnmodel.2, simplevslearning.1",
+                "framework.2, learning.4, ppomodel.2, simplevslearning.1",
+                "framework.2, heuristic.10, simplevsheuristic.1",
+        };
+
+        checkoutValidVariants(validCheckouts);
+        PythonAdapterRepositoryTestUtil.logPythonDetails(repoPath, log);
+    }
+
+    @Test
+    @Order(4)
+    public void pommermanFastTests() {
+
+        preparePathAndEnableLogging(PythonAdapterRepositoryTestUtil.PATH_POMMERMAN_FAST);
+
+        // make commits
+        String[] commits = PythonAdapterRepositoryTestUtil.getCommits(repoPath);
+        makeCommits(commits);
+
+        // extensional correctness - reproduce commits
+        checkExtensionalCorrectness(commits, PythonAdapterRepositoryTestUtil.EXT_PYTHON);
+        recreateCommitsWithRedundancies(repoPath); // to check for equality with original
+
+        // checkout valid variants
+        String[] invalidCheckouts = new String[]{
+                "framework.2, redundant.1, learning.4, dqnmodel.1, simplevsheuristic.1", // invalid algo-model combination
+                "framework.1, redundant.1, heuristic.8, ppomodel.2, simplevslearning.1", // invalid algo-model combination
+        };
+
+        checkoutInvalidVariants(invalidCheckouts);
+
+        // checkout valid variants
+        String[] validCheckouts = new String[]{
+                "framework.2, redundant.1, learning.3, dqnmodel.2, simplevslearning.1",
+                "framework.2, redundant.1, learning.4, ppomodel.2, simplevslearning.1",
+                "framework.2, redundant.1, heuristic.10, simplevsheuristic.1",
+        };
+
+        checkoutValidVariants(validCheckouts);
+        PythonAdapterRepositoryTestUtil.logPythonDetails(repoPath, log);
+    }
+
+    /**
+     * compare PATH_POMMERMAN and PATH_POMMERMAN_FAST repository
+     * make sure both extensional checkouts (incl. redundant.1 for PATH_POMMERMAN_FAST) are equal
+     * run only after PythonAdapterRepositoryTest has finished successfully
+     */
+    @AfterAll
+    //@Order(99)
+    public static void comparePommermanCheckoutsTest() {
+
+        Path p1 = PATH_REPOSITORIES_ROOT.resolve(PythonAdapterRepositoryTestUtil.PATH_POMMERMAN).resolve(PythonAdapterRepositoryTestUtil.PATH_EXTENSIONAL);
+        Path p2 = PATH_REPOSITORIES_ROOT.resolve(PythonAdapterRepositoryTestUtil.PATH_POMMERMAN_FAST).resolve("extensional_correctness_check_red");
+
+        compareRepositories(p1, p2);
     }
 
     // Helper Methods ----------------------------------------------------------------------------------------
-    private boolean pythonPluginIsLoaded() {
+    private static boolean pythonPluginIsLoaded() {
         return service.getArtifactPlugins().stream().anyMatch(pl -> pl.getName().equals("PythonArtifactPlugin"));
     }
 
-
-    private void checkPathInitService(String repository) {
-        Path cwd = Path.of(System.getProperty("user.dir"));
-        repoPath = cwd.resolve("src/integrationTest/resources/data").resolve(repository);
+    private static void checkPathInitService(String repository) {
+        repoPath = PATH_REPOSITORIES_ROOT.resolve(repository);
         Path p = repoPath.resolve(".ecco");
         deleteDir(p);
-        Assert.assertFalse(Files.exists(p));
+        assertFalse(Files.exists(p));
         service.setRepositoryDir(p);
         service.init();
 
@@ -233,19 +217,19 @@ public class PythonAdapterIntegrationTest {
 
     private void preparePathAndEnableLogging(String repository) {
         checkPathInitService(repository);
-        enableLoggingToFile(repoPath);
+        PythonAdapterRepositoryTestUtil.enableLoggingToFile(repoPath);
     }
 
     private void makeCommits(String[] commits) {
         long accumulatedTime = 0;
-        log.add(0, "Config","commitECCOTime", "accumulatedCommitECCOTime");
+        log.add(0, "Config", "commitECCOTime", "accumulatedCommitECCOTime");
         for (int i = 0; i < commits.length; i++) {
             Path commitPath = repoPath.resolve(commits[i]);
             service.setBaseDir(commitPath);
             String configString = service.getConfigStringFromFile(commitPath);
 
             String finalCommit = commits[i];
-            long timeElapsed = measureTime(() ->  service.commit(finalCommit));
+            long timeElapsed = measureTime(() -> service.commit(finalCommit));
 
             accumulatedTime += timeElapsed / 1000000;
             log.add(i + 1,
@@ -258,11 +242,11 @@ public class PythonAdapterIntegrationTest {
     }
 
     private void checkoutValidVariants(String[] validVariants) {
-        checkoutVariants(repoPath.resolve(PATH_INTENSIONAL_VALID), validVariants, "VV");
+        checkoutVariants(repoPath.resolve(PythonAdapterRepositoryTestUtil.PATH_INTENSIONAL_VALID), validVariants, "VV");
     }
 
     private void checkoutInvalidVariants(String[] invalidVariants) {
-        checkoutVariants(repoPath.resolve(PATH_INTENSIONAL_INVALID), invalidVariants, "IV");
+        checkoutVariants(repoPath.resolve(PythonAdapterRepositoryTestUtil.PATH_INTENSIONAL_INVALID), invalidVariants, "IV");
     }
 
     private void checkoutVariants(Path repoPath, String[] variants, String shortcut) {
@@ -286,7 +270,7 @@ public class PythonAdapterIntegrationTest {
         for (Commit c : service.getCommits()) {
             System.out.println(c.getConfiguration().toString());
 
-            Path compositionPath = repoPath.resolve(PATH_EXTENSIONAL + "/Commit" + k);
+            Path compositionPath = repoPath.resolve(PythonAdapterRepositoryTestUtil.PATH_EXTENSIONAL + "/Commit" + k);
 
             recreateDir(compositionPath);
 
@@ -302,7 +286,7 @@ public class PythonAdapterIntegrationTest {
             logger.info("Checkout of Commit  " + k + " successful");
 
             // check all files of certain type
-            List<Path> relPaths = Objects.requireNonNull(getRelativeFilePaths(compositionPath, ending));
+            List<Path> relPaths = Objects.requireNonNull(PythonAdapterRepositoryTestUtil.getRelativeFilePaths(compositionPath, ending));
             for (Path relPath : relPaths) {
                 assertTrue(
                         compareFiles(compositionPath.resolve(relPath),
@@ -325,7 +309,7 @@ public class PythonAdapterIntegrationTest {
         int k = 1;
         long accumulatedTime = 0;
         for (Commit c : service.getCommits()) {
-            Path compositionPath = repoPath.resolve(PATH_EXTENSIONAL + "_red/Commit" + k);
+            Path compositionPath = repoPath.resolve(PythonAdapterRepositoryTestUtil.PATH_EXTENSIONAL + "_red/Commit" + k);
 
             recreateDir(compositionPath);
 

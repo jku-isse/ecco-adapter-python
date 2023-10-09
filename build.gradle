@@ -1,27 +1,23 @@
 plugins {
     id 'groovy'
+    id 'java'
     id 'idea' // optional (to generate IntelliJ IDEA project files)
     id "org.ajoberstar.grgit" version "1.7.0"
 }
 
-apply plugin: 'java'
-
 dependencies {
-//    testImplementation 'com.palominolabs.gradle.task:gradle-git-clone-task:0.0.2'
-//    implementation 'org.ajoberstar:grgit:1.7.0'
-    //testImplementation 'org.ajoberstar:gradle-git:1.7.0'
-    implementation group: 'com.fasterxml.jackson.core', name: 'jackson-databind', version: '2.14.1'
 
+    implementation group: 'com.fasterxml.jackson.core', name: 'jackson-databind', version: '2.14.1'
 
     implementation project(':ecco-service')
     if (use_py4j_parser.toBoolean()) {
         println '> include py4j dependency'
         implementation group: 'net.sf.py4j', name: 'py4j', version: '0.10.9.2'
     }
-    if (use_graalvm_parser.toBoolean()) {
-        println '> include graalvm dependency'
-        implementation group: 'org.graalvm.sdk', name: 'polyglot-tck', version: '21.3.0'
-    }
+//    if (use_graalvm_parser.toBoolean()) {
+//        println '> include graalvm dependency'
+//        implementation group: 'org.graalvm.sdk', name: 'polyglot-tck', version: '21.3.0'
+//    }
 }
 
 ecco.adapter = true
@@ -33,13 +29,23 @@ sourceSets {
                 exclude '**/py4j/**'
             }
         }
-        if (!use_graalvm_parser.toBoolean()) {
-            java {
-                exclude '**/graalvm/**'
-            }
-            resources {
-                exclude 'graalVM-config.properties'
-            }
+//        if (!use_graalvm_parser.toBoolean()) {
+//            java {
+//                exclude '**/graalvm/**'
+//            }
+//            resources {
+//                exclude 'graalVM-config.properties'
+//            }
+//        }
+    }
+    repositoryTest {
+        java {
+            compileClasspath += main.output + test.output
+            runtimeClasspath += main.output + test.output
+            srcDir file('src/repositoryTest/java')
+        }
+        resources {
+            srcDir file('src/repositoryTest/resources')
         }
     }
 }
@@ -49,20 +55,45 @@ ospackage {
     requires('ecco-service', version, EQUAL)
 }
 
+repositories {
+    mavenCentral()
+}
+
+sourceCompatibility = JavaVersion.VERSION_16
+targetCompatibility = JavaVersion.VERSION_16
+
+/*
+ * repositoryTests for Thesis evaluation
+ */
+
 // clone integrationTest-repository from remote
 import org.ajoberstar.grgit.*
-
-def dataPath = 'src/integrationTest/resources/data'
-
-task cloneIntegrationTestRepository {
+def dataPath = 'src/repositoryTest/resources/data'
+task cloneRepositoryTestRepository {
     doLast{
         if(!file(dataPath).exists()){
             Grgit.clone(dir: file(dataPath), uri: 'https://github.com/MatthiasPreuner/ecco-adapter-python-test.git')
         }
     }
 }
-tasks.integrationTest.dependsOn("cloneIntegrationTestRepository")
 
-repositories {
-    mavenCentral()
+configurations {
+    repositoryTestImplementation.extendsFrom implementation
+    repositoryTestRuntimeOnly.extendsFrom runtimeOnly
+    repositoryTestImplementation.extendsFrom testImplementation // use Junit dependency from test
+}
+
+task repositoryTest(type: Test, group: 'verification', description: 'Runs the automatic tests and performance measurement for Thesis Evaluation.') {
+    useJUnitPlatform()
+
+    testClassesDirs = sourceSets.repositoryTest.output.classesDirs
+    classpath = sourceSets.repositoryTest.runtimeClasspath
+    outputs.upToDateWhen { false }
+
+    dependsOn("cloneRepositoryTestRepository")
+}
+check.dependsOn -=repositoryTest
+
+tasks.named("processRepositoryTestResources") {
+    duplicatesStrategy = DuplicatesStrategy.INCLUDE
 }

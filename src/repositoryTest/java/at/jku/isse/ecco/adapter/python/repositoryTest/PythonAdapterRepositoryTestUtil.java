@@ -1,13 +1,11 @@
-package at.jku.isse.ecco.adapter.python.test;
+package at.jku.isse.ecco.adapter.python.repositoryTest;
 
 import at.jku.isse.ecco.adapter.python.PythonPlugin;
 
 import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Locale;
+import java.util.*;
 import java.util.logging.FileHandler;
 import java.util.logging.Handler;
 import java.util.logging.Logger;
@@ -15,9 +13,15 @@ import java.util.logging.SimpleFormatter;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-public class IntegrationTestUtil {
+import static at.jku.isse.ecco.adapter.python.test.PythonAdapterTestUtil.compareFiles;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
-    public static final Path REPOSITORY_ROOT = Path.of(System.getProperty("user.dir")).resolve("src/integrationTest/resources/data");
+public class PythonAdapterRepositoryTestUtil {
+
+    public static final Path PATH_REPOSITORIES_ROOT = Path.of(System.getProperty("user.dir")).resolve("src/repositoryTest/resources/data");
+
+
     // repository paths
     public static final String PATH_POMMERMAN = "pommerman";
     public static final String PATH_POMMERMAN_FAST = "pommerman_small";
@@ -39,7 +43,7 @@ public class IntegrationTestUtil {
         File csvOutputFile = new File(p.toAbsolutePath() + "\\" + fileName + ".csv");
         try (PrintWriter pw = new PrintWriter(csvOutputFile)) {
             measures.stream()
-                    .map(IntegrationTestUtil::convertToCSV)
+                    .map(PythonAdapterRepositoryTestUtil::convertToCSV)
                     .forEach(pw::println);
         } catch (Exception ignored) {
         }
@@ -47,7 +51,7 @@ public class IntegrationTestUtil {
 
     private static String convertToCSV(String[] data) {
         return Stream.of(data)
-                .map(IntegrationTestUtil::escapeSpecialCharacters)
+                .map(PythonAdapterRepositoryTestUtil::escapeSpecialCharacters)
                 .collect(Collectors.joining(","));
     }
 
@@ -117,7 +121,7 @@ public class IntegrationTestUtil {
         }
     }
 
-    public static void finishLogging(Path repoPath, PythonAdapterIntegrationTestLogger log) {
+    public static void finishLogging(Path repoPath, PythonAdapterRepositoryTestLogger log) {
         Logger logger = Logger.getLogger(PythonPlugin.class.getName());
 
         for (Handler h : logger.getHandlers()) {
@@ -131,7 +135,7 @@ public class IntegrationTestUtil {
         log.createCSV(repoPath, name);
     }
 
-    public static void parseLog(Path repoPath, PythonAdapterIntegrationTestLogger log) {
+    public static void parseLog(Path repoPath, PythonAdapterRepositoryTestLogger log) {
 
         try (BufferedReader reader = new BufferedReader(new FileReader(repoPath.resolve(LOG_FILE).toAbsolutePath().toString()))) {
             List<Integer> times = new LinkedList<>();
@@ -209,7 +213,7 @@ public class IntegrationTestUtil {
         }
     }
 
-    public static void logPythonDetails(Path repoPath, PythonAdapterIntegrationTestLogger log) {
+    public static void logPythonDetails(Path repoPath, PythonAdapterRepositoryTestLogger log) {
         String[] commits = getCommits(repoPath);
 
         log.add(0, "msg", "nFiles", "nLines");
@@ -235,7 +239,7 @@ public class IntegrationTestUtil {
         }
     }
 
-    public static void logJuypterDetails(Path repoPath, PythonAdapterIntegrationTestLogger log) {
+    public static void logJuypterDetails(Path repoPath, PythonAdapterRepositoryTestLogger log) {
         String[] commits = getCommits(repoPath);
 
         log.add(0, "msg");
@@ -267,4 +271,25 @@ public class IntegrationTestUtil {
     private static String format(float seconds) {
         return String.format(Locale.US, "%.03f", seconds / 1000);
     }
+
+    /**
+     *   compare two repositories based on the conditions of the compareFiles method
+     *   makes sure that Pommerman Slow and Pommerman Fast create the same result
+     */
+    public static void compareRepositories(Path p1, Path p2) {
+
+        List<Path> relPaths1 = new ArrayList<>(Objects.requireNonNull(PythonAdapterRepositoryTestUtil.getRelativeFilePaths(p1, "py")));
+        List<Path> relPaths2 = new ArrayList<>(Objects.requireNonNull(PythonAdapterRepositoryTestUtil.getRelativeFilePaths(p2, "py")));
+
+        assertEquals(relPaths1.size(), relPaths2.size());
+
+        if (relPaths1.size() == relPaths2.size()) {
+            for (int i = 0; i < relPaths1.size(); i++) {
+                assertTrue(
+                        compareFiles(p1.resolve(relPaths1.get(i).toString()), p2.resolve(relPaths2.get(i).toString())), "Comparison failed for " + relPaths1.get(i).toString());
+            }
+        }
+    }
+
+
 }

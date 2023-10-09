@@ -4,10 +4,12 @@ import at.jku.isse.ecco.adapter.python.PythonReader;
 import at.jku.isse.ecco.adapter.python.PythonWriter;
 import at.jku.isse.ecco.storage.mem.dao.MemEntityFactory;
 import at.jku.isse.ecco.tree.Node;
-import org.testng.annotations.AfterSuite;
-import org.testng.annotations.BeforeSuite;
-import org.testng.annotations.DataProvider;
-import org.testng.annotations.Test;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -20,7 +22,7 @@ import java.util.Set;
 import java.util.stream.Stream;
 
 import static at.jku.isse.ecco.adapter.python.test.PythonAdapterTestUtil.*;
-import static org.testng.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 
 public class PythonAdapterTest {
@@ -35,7 +37,7 @@ public class PythonAdapterTest {
     static PythonReader reader;
     static PythonWriter writer;
 
-    @BeforeSuite(groups = {"unit"})
+    @BeforeAll
     static void start() {
         reader = new PythonReader(new MemEntityFactory());
         writer = new PythonWriter();
@@ -48,28 +50,32 @@ public class PythonAdapterTest {
         deleteDir(writePath);
     }
 
-    @AfterSuite(groups = {"unit"})
+    @AfterAll
     static void calculateMetricsForWholeTestSet() {
         reader = null;
         writer = null;
     }
 
-    @Test(dataProvider = "python", groups = {"python"})
+    @ParameterizedTest
+    @MethodSource("filesPython")
     void testPython(final Path path) {
         testFiles(path);
     }
 
-    @Test(dataProvider = "jupyter", groups = {"jupyter"})
+    @ParameterizedTest
+    @MethodSource("filesJupyter")
     void testJupyter(final Path path) {
         testFiles(path);
     }
 
-    @Test(dataProvider = "json", groups = {"json"})
+    @ParameterizedTest
+    @MethodSource("filesJson")
     void testJson(final Path path) {
         testFiles(path);
     }
 
-    @Test(groups = {"python"}, enabled = false)
+    @Test
+    @Disabled
     void testSingleFile() {
         reader = new PythonReader(new MemEntityFactory());
         writer = new PythonWriter();
@@ -110,22 +116,19 @@ public class PythonAdapterTest {
         assertTrue(identical);
     }
 
-    @DataProvider(name = "python")
-    public static Object[] filesPython() {
+    public static Path[] filesPython() {
         return files(python);
     }
 
-    @DataProvider(name = "jupyter")
-    public static Object[] filesJupyter() {
+    public static Path[] filesJupyter() {
         return files(jupyter);
     }
 
-    @DataProvider(name = "json")
-    public static Object[] filesJson() {
+    public static Path[] filesJson() {
         return files(json);
     }
 
-    public static Object[] files(String type) {
+    public static Path[] files(String type) {
         List<Path> files;
 
         //final String[] excludedFolders = new String[]{"yolov5-master", "ass1", "ass2"};
@@ -151,7 +154,7 @@ public class PythonAdapterTest {
             throw new RuntimeException(e);
         }
 
-        return files.toArray(new Object[0]);
+        return files.toArray(new Path[0]);
     }
 
 }
