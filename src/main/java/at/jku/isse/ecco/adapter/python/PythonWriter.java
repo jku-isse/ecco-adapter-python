@@ -49,7 +49,7 @@ public class PythonWriter implements ArtifactWriter<Set<Node>, Path> {
         for (Node root : input) {
             PluginArtifactData pluginArtifact = (PluginArtifactData) root.getArtifact().getData();
             Path outputPath = base.resolve(pluginArtifact.getPath());
-            // TODO: this resolve might not be necessary as the artifact stores the relative path anyway.
+            // HINT: this resolve might not be necessary as the artifact stores the relative path anyway.
             output.add(outputPath);
             if (root.getChildren().size() == 1) {
                 Node moduleNode = root.getChildren().get(0);
@@ -59,12 +59,7 @@ public class PythonWriter implements ArtifactWriter<Set<Node>, Path> {
             }
         }
         parser.shutdown();
-        return output.toArray(new Path[output.size()]);
-    }
-
-    @Override
-    public Path[] write2(Path base, Set<Node> input, String f) {
-        return new Path[0];
+        return output.toArray(new Path[0]);
     }
 
     private final Collection<WriteListener> listeners = new ArrayList<>();
