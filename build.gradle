@@ -59,9 +59,6 @@ repositories {
     mavenCentral()
 }
 
-sourceCompatibility = JavaVersion.VERSION_16
-targetCompatibility = JavaVersion.VERSION_16
-
 /*
  * repositoryTests for Thesis evaluation
  */
@@ -72,7 +69,7 @@ def dataPath = 'src/repositoryTest/resources/data'
 task cloneRepositoryTestRepository {
     doLast{
         if(!file(dataPath).exists()){
-            Grgit.clone(dir: file(dataPath), uri: 'https://github.com/MatthiasPreuner/ecco-adapter-python-test.git')
+            Grgit.clone(dir: file(dataPath), uri: 'https://github.com/jku-isse/ecco-adapter-python-tests.git')
         }
     }
 }
