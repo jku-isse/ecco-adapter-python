@@ -117,6 +117,8 @@ public class PythonAdapterRepositoryTest {
 
         checkoutValidVariants(validCheckouts);
         PythonAdapterRepositoryTestUtil.logJuypterDetails(repoPath, log);
+
+        checkoutAllVariants(readConfigsFromFile(repoPath.resolve("intensional_correctness_all.txt")));
     }
 
     @Test
@@ -149,6 +151,8 @@ public class PythonAdapterRepositoryTest {
 
         checkoutValidVariants(validCheckouts);
         PythonAdapterRepositoryTestUtil.logPythonDetails(repoPath, log);
+
+        checkoutAllVariants(readConfigsFromFile(repoPath.resolve("intensional_correctness_all.txt")));
     }
 
     @Test
@@ -249,7 +253,14 @@ public class PythonAdapterRepositoryTest {
         checkoutVariants(repoPath.resolve(PythonAdapterRepositoryTestUtil.PATH_INTENSIONAL_INVALID), invalidVariants, "IV");
     }
 
+    private void checkoutAllVariants(String[] allVariants) {
+        checkoutVariants(repoPath.resolve(PythonAdapterRepositoryTestUtil.PATH_INTENSIONAL_ALL), allVariants, "ALL");
+    }
+
+
     private void checkoutVariants(Path repoPath, String[] variants, String shortcut) {
+        PythonAdapterRepositoryTestLogger missingSurplusLogger = new PythonAdapterRepositoryTestLogger();
+        missingSurplusLogger.add("config", "missing", "surplus");
         for (int i = 1; i <= variants.length; i++) {
             String name = shortcut + i + "_" + variants[i - 1].replaceAll("[.][0-9]+", "").replaceAll(", ", "_");
             Path compositionPath = repoPath.resolve(name);
@@ -259,12 +270,15 @@ public class PythonAdapterRepositoryTest {
             service.setBaseDir(compositionPath);
             service.checkout(variants[i - 1]);
 
+            int[] missingSurplus = countMissingSurplus(compositionPath);
+            missingSurplusLogger.add(i, variants[i - 1], String.valueOf(missingSurplus[0]), String.valueOf(missingSurplus[1]));
             logger.info("Checkout " + shortcut + i + " successful");
         }
+        missingSurplusLogger.createCSV(repoPath, "missingSurplus");
     }
 
     private void checkExtensionalCorrectness(String[] commits, String ending) {
-        log.add(0, "CheckoutECCOTime", "accumulatedCheckoutECCOTime");
+        log.add(0, "CheckoutECCOTime", "accumulatedCheckoutECCOTime", "missing", "surplus");
         long accumulatedTime = 0;
         int k = 1;
         for (Commit c : service.getCommits()) {
@@ -279,9 +293,15 @@ public class PythonAdapterRepositoryTest {
 
             long timeElapsed = measureTime(() -> service.checkout(config));
             accumulatedTime += timeElapsed / 1000000;
+
+            int[] missingSurplus = countMissingSurplus(compositionPath);
+
             log.add(k,
                     String.valueOf(((float) (timeElapsed / 1000000)) / 1000f),
-                    String.valueOf((float) accumulatedTime / 1000f));
+                    String.valueOf((float) accumulatedTime / 1000f),
+                    String.valueOf(missingSurplus[0]),
+                    String.valueOf(missingSurplus[1])
+            );
 
             logger.info("Checkout of Commit  " + k + " successful");
 
