@@ -2,7 +2,10 @@ package at.jku.isse.ecco.adapter.python.repositoryTest;
 
 import at.jku.isse.ecco.adapter.python.PythonPlugin;
 
-import java.io.*;
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
@@ -10,7 +13,6 @@ import java.util.logging.FileHandler;
 import java.util.logging.Handler;
 import java.util.logging.Logger;
 import java.util.logging.SimpleFormatter;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static at.jku.isse.ecco.adapter.python.test.PythonAdapterTestUtil.compareFiles;
@@ -19,7 +21,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class PythonAdapterRepositoryTestUtil {
 
-    public static final Path PATH_REPOSITORIES_ROOT = Path.of(System.getProperty("user.dir")).resolve("src/repositoryTest/resources/data");
+    public static final Path PATH_RESOURCES = Path.of(System.getProperty("user.dir")).resolve("src/repositoryTest/resources");
+    public static final Path PATH_REPOSITORIES_ROOT = PATH_RESOURCES.resolve("data");
 
 
     // repository paths
@@ -32,37 +35,13 @@ public class PythonAdapterRepositoryTestUtil {
     public static final String PATH_EXTENSIONAL = "extensional_correctness_check";
     public static final String PATH_INTENSIONAL_VALID = "intensional_correctness_valid";
     public static final String PATH_INTENSIONAL_INVALID = "intensional_correctness_invalid";
+    public static final String PATH_INTENSIONAL_ALL = "intensional_correctness_all";
 
     public static final String EXT_PYTHON = ".py";
     public static final String EXT_JUPYTER = ".ipynb";
     public static final String EXT_JSON = ".json";
 
     private static final String LOG_FILE = "logging.log";
-
-    public static void createCSV(Path p, List<String[]> measures, String fileName) {
-        File csvOutputFile = new File(p.toAbsolutePath() + "\\" + fileName + ".csv");
-        try (PrintWriter pw = new PrintWriter(csvOutputFile)) {
-            measures.stream()
-                    .map(PythonAdapterRepositoryTestUtil::convertToCSV)
-                    .forEach(pw::println);
-        } catch (Exception ignored) {
-        }
-    }
-
-    private static String convertToCSV(String[] data) {
-        return Stream.of(data)
-                .map(PythonAdapterRepositoryTestUtil::escapeSpecialCharacters)
-                .collect(Collectors.joining(","));
-    }
-
-    private static String escapeSpecialCharacters(String data) {
-        String escapedData = data.replaceAll("\\R", " ");
-        if (data.contains(",") || data.contains("\"") || data.contains("'")) {
-            data = data.replace("\"", "\"\"");
-            escapedData = "\"" + data + "\"";
-        }
-        return escapedData;
-    }
 
     public static List<Path> getAbsoluteFilePaths(Path folder, String ending) {
         try (Stream<Path> paths = Files.walk(folder)) {
@@ -87,6 +66,48 @@ public class PythonAdapterRepositoryTestUtil {
             // process exception
             return null;
         }
+    }
+
+    /**
+     * read configuration strings from a text file for checkouts
+     */
+    public static String[] readConfigsFromFile(Path path) {
+        File file = new File(path.toUri());
+        List<String> configs = new LinkedList<>();
+        try {
+            BufferedReader br = new BufferedReader(new FileReader(file));
+            String st;
+
+            while ((st = br.readLine()) != null) {
+                configs.add(st);
+            }
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+        return configs.toArray(new String[0]);
+    }
+
+    /**
+     * Count Missing and Surplus Associations from .warnings file after a checkout
+     */
+    public static int[] countMissingSurplus(Path compositionPath) {
+        File file = new File(compositionPath.resolve(".warnings").toUri());
+        int[] missingSurplus = new int[2];
+        try {
+            BufferedReader br = new BufferedReader(new FileReader(file));
+            String st;
+
+            while ((st = br.readLine()) != null) {
+                if (st.startsWith("MISSING")) {
+                    missingSurplus[0]++;
+                } else if (st.startsWith("SURPLUS")) {
+                    missingSurplus[1]++;
+                }
+            }
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+        return missingSurplus;
     }
 
     /**
@@ -273,8 +294,8 @@ public class PythonAdapterRepositoryTestUtil {
     }
 
     /**
-     *   compare two repositories based on the conditions of the compareFiles method
-     *   makes sure that Pommerman Slow and Pommerman Fast create the same result
+     * compare two repositories based on the conditions of the compareFiles method
+     * makes sure that Pommerman Slow and Pommerman Fast create the same result
      */
     public static void compareRepositories(Path p1, Path p2) {
 
