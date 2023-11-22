@@ -14,7 +14,13 @@ import at.jku.isse.ecco.dao.EntityFactory;
 import at.jku.isse.ecco.tree.Node;
 
 @SuppressWarnings("unused")
-public record ReaderNode(Node.Op node) {
+public class ReaderNode {
+
+    private final Node.Op node;
+
+    public ReaderNode(Node.Op node) {
+        this.node = node;
+    }
 
     // provides methods to be called from python reader script
     private static EntityFactory entityFactory;
