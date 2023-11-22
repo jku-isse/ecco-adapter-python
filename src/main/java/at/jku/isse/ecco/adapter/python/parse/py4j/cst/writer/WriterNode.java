@@ -14,8 +14,13 @@ import java.util.ArrayList;
 import java.util.List;
 
 @SuppressWarnings("unused")
-public record WriterNode(Node node) {
+public class WriterNode {
 
+    private final Node node;
+
+    public WriterNode(Node node) {
+        this.node = node;
+    }
     // provides methods to be called from python writer script
 
     //region Node ------------------------------------------------------------------------------------------------------
